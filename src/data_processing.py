@@ -23,6 +23,10 @@ def load_df(file_path):
     df["Date"] = pd.to_datetime(df["Date"], dayfirst=True, format="mixed")
     df['Item'] = df['Item'].astype(str)
     df['Category'] = df['Category'].astype(str)
+    # Extract Year and Month (as full month name or number)
+    df['Year'] = df['Date'].dt.year
+    df['Month'] = df['Date'].dt.strftime('%b')  # 'Jan', 'Feb', etc.
+    df['MonthNum'] = df['Date'].dt.month        # for sorting
     return df
 
 def load_dfs():
