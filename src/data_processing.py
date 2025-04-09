@@ -25,6 +25,7 @@ def load_df(file_path):
     df['Category'] = df['Category'].astype(str)
     # Extract Year and Month (as full month name or number)
     df['Year'] = df['Date'].dt.year
+    df['Year'] = df['Date'].dt.year.astype(str)
     df['Month'] = df['Date'].dt.strftime('%b')  # 'Jan', 'Feb', etc.
     df['MonthNum'] = df['Date'].dt.month        # for sorting
     return df
