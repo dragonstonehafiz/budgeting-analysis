@@ -16,19 +16,18 @@ def init():
     # Load data
     df = load_combined()
 
-    # Set colors for bars
     category_colors = {
-        'Food & Beverages': '#B22222',           # Meat Red
-        'Books & Literature': '#6A0DAD',         # Regal Purple
-        'Gaming': '#AAFF00',                     # Xbox Green
-        'Digital Subscriptions': '#FFD700',      # Bright Yellow
-        'Movies & Media': '#1E90FF',             # Dodger Blue
-        'Music & Audio': '#FF69B4',              # Bright Pink
-        'Electronics & Accessories': '#00FFFF',  # Aqua Blue
-        'Clothing & Apparel': '#C71585',         # Dark Pink
-        'Health & Personal Care': '#006400',     # Dark Green
-        'Collectibles': '#FF4500',               # Fire Orange
-        'Miscellaneous': '#808080'               # Grey
+        'Food & Beverages': '#E69F00',           # Orange
+        'Books & Literature': '#56B4E9',         # Sky Blue
+        'Gaming': '#009E73',                     # Bluish Green
+        'Digital Subscriptions': '#F0E442',      # Yellow
+        'Movies & Media': '#0072B2',             # Deep Blue
+        'Music & Audio': '#D55E00',              # Vermilion
+        'Electronics & Accessories': '#CC79A7',  # Reddish Purple
+        'Clothing & Apparel': '#999999',         # Grey
+        'Health & Personal Care': '#000000',     # Black
+        'Collectibles': '#A6761D',               # Brownish Gold
+        'Miscellaneous': '#DC267F'               # Bold Pink (well-separated from purple/blue)
     }
     
     return df, category_colors

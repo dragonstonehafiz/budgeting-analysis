@@ -1,6 +1,6 @@
 import streamlit as st
 from src.streamlit_init import init
-from src.streamlit_render import render_yearly, render_comparison
+from src.streamlit_render import render_comparison, render_yearly
 
 # Page config
 st.set_page_config(page_title="Spending Dashboard", layout="wide")
@@ -12,7 +12,6 @@ df, category_colors = init()
 st.sidebar.header("Filter")
 year_options = sorted(df['Year'].dropna().unique(), reverse=True)
 selected_year = st.sidebar.selectbox("Select Year", year_options)
-
 
 # Main: Dashboard title
 st.title("Spending Dashboard")
