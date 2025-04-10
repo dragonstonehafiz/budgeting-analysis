@@ -1,6 +1,6 @@
 import streamlit as st
 from src.streamlit_init import init
-from src.streamlit_render import render_comparison, render_yearly
+from src.streamlit_render import render_full_data, render_yearly
 
 # Page config
 st.set_page_config(page_title="Spending Dashboard", layout="wide")
@@ -8,18 +8,19 @@ st.set_page_config(page_title="Spending Dashboard", layout="wide")
 # Load data
 df, category_colors = init()
 
-# Sidebar: Year selection only
-st.sidebar.header("Filter")
-year_options = sorted(df['Year'].dropna().unique(), reverse=True)
-selected_year = st.sidebar.selectbox("Select Year", year_options)
+# Sidebar: View selection
+st.sidebar.header("View Options")
+view_mode = st.sidebar.radio("Choose View", ["Full Data", "Yearly"])
 
-# Main: Dashboard title
-st.title("Spending Dashboard")
-comparison, yearly = st.tabs(["Comparison", "Yearly"])
+# Sidebar: Year selection (only if Yearly view is active)
+if view_mode == "Yearly":
+    year_options = sorted(df['Year'].dropna().unique(), reverse=True)
+    selected_year = st.sidebar.selectbox("Select Year", year_options)
 
-with comparison:
-    render_comparison(df, category_colors)
-with yearly:
-    render_yearly(df, selected_year, category_colors)
+# Render based on selected view
+if view_mode == "Full Data":
+    render_yearly(df, category_colors, full_data=True)
+elif view_mode == "Yearly":
+    render_yearly(df, category_colors, selected_year=selected_year, full_data=False)
 
 
