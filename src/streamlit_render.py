@@ -15,7 +15,7 @@ def render_yearly(df: pd.DataFrame, selected_year: str, category_colors: dict):
     # --- GENERAL SECTION ---
     st.subheader("Spending Summary")
     
-    st.plotly_chart(plots.plot_monthly_trends_by_category(df, selected_year, category_colors=category_colors), use_container_width=True)
+    st.plotly_chart(plots.plot_monthly_spend_by_category(df_year, category_colors=category_colors), use_container_width=True)
 
     # Top 10 Most Expensive Items
     st.markdown("**Top 10 Most Expensive Items**")
@@ -49,7 +49,7 @@ def render_yearly(df: pd.DataFrame, selected_year: str, category_colors: dict):
     left, right = st.columns(2)
 
     with left:
-        st.plotly_chart(plots.plot_annual_spending_pie_by_category(df, selected_year, category_colors=category_colors), use_container_width=True)
+        st.plotly_chart(plots.plot_spending_by_category_pie(df_year, category_colors=category_colors), use_container_width=True)
     with right:
         st.markdown("**Total by Category**")
         category_totals = df_year.groupby('Category')['Cost'].sum().reset_index()
@@ -63,7 +63,7 @@ def render_yearly(df: pd.DataFrame, selected_year: str, category_colors: dict):
         top_by_cat = df_year.sort_values(by='Cost', ascending=False).groupby('Category').head(1).reset_index(drop=True)
         st.dataframe(top_by_cat[['Category', 'Item', 'Cost']].style.format({"Cost": "${:,.2f}"}), use_container_width=True)
     with right:
-        st.plotly_chart(plots.plot_avg_spend_per_item(df, selected_year, category_colors=category_colors), use_container_width=True)
+        st.plotly_chart(plots.plot_avg_spend_per_category(df_year, category_colors=category_colors), use_container_width=True)
         
 
     # Category drilldown
@@ -84,13 +84,13 @@ def render_yearly(df: pd.DataFrame, selected_year: str, category_colors: dict):
 
     with right:
         st.markdown("Most Expensive Purchases in Selected Category")
-        st.plotly_chart(plots.plot_top_items_in_category(df_cat, year=selected_year), use_container_width=True)
+        st.plotly_chart(plots.plot_top_items_in_category(df_cat), use_container_width=True)
         
     left, right = st.columns(2)
     
     with left:
         st.markdown("Monthly Spending in Selected Category")
-        st.plotly_chart(plots.plot_monthly_spending_in_category(df_cat, year=selected_year), use_container_width=True)
+        st.plotly_chart(plots.plot_monthly_spending_in_category(df_cat), use_container_width=True)
 
     with right:
         # Monthly totals for that category
@@ -104,6 +104,9 @@ def render_yearly(df: pd.DataFrame, selected_year: str, category_colors: dict):
     # --- INSIGHTS SECTION ---
     st.subheader("Insights")
 
+    st.markdown("**Item Cost Distribution** — How your spending is spread out across purchases")
+    st.plotly_chart(plots.plot_cost_scatter(df_year), use_container_width=True)
+    
     # Sneaky Totals (cheap items that added up)
     st.markdown("**Sneaky Totals** — Low-cost items that quietly piled up")
     sneaky = df_year[df_year['Cost'] < 10]
@@ -126,6 +129,27 @@ def render_yearly(df: pd.DataFrame, selected_year: str, category_colors: dict):
     ).sort_values(by='Count', ascending=False).reset_index()
     st.dataframe(new_summary.style.format({"Total_Spent": "${:,.2f}"}), use_container_width=True)
 
+    # Top Category per Month
+    st.markdown("**Top Category per Month** — Which category dominated each month?")
+    monthly_totals = df_year.groupby(['MonthNum', 'Month', 'Category'])['Cost'].sum().reset_index()
+    monthly_winners = (
+        monthly_totals
+        .sort_values(['MonthNum', 'Cost'], ascending=[True, False])
+        .drop_duplicates(['MonthNum'])
+    )
+    monthly_winners = monthly_winners.sort_values('MonthNum').reset_index(drop=True)
+    top_category_table = monthly_winners[['Month', 'Category', 'Cost']]
+    st.dataframe(top_category_table.style.format({"Cost": "${:,.2f}"}), use_container_width=True)
+
+    # Single Large Purchases
+    threshold = df_year['Cost'].mean() + df_year['Cost'].std()
+    st.markdown(f"**Single Large Purchases** — One-time purchases over ${threshold:.2f}")
+    large_purchases = df_year[df_year['Cost'] >= threshold]
+    item_counts = large_purchases['Item'].value_counts()
+    single_large = large_purchases[large_purchases['Item'].isin(item_counts[item_counts == 1].index)]
+    single_large_table = single_large[['Item', 'Category', 'Cost', 'Month']].sort_values(by='Cost', ascending=False).reset_index(drop=True)
+    st.dataframe(single_large_table.style.format({"Cost": "${:,.2f}"}), use_container_width=True)
+    
     # No-Spend Categories
     st.markdown("**No-Spend Categories** — Where you spent absolutely nothing")
     all_categories = df['Category'].dropna().unique()
@@ -135,4 +159,3 @@ def render_yearly(df: pd.DataFrame, selected_year: str, category_colors: dict):
         st.write(", ".join(no_spend))
     else:
         st.success("You spent in every category this year!")
-

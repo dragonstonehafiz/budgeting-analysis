@@ -1,15 +1,14 @@
 import plotly.express as px
 import pandas as pd
 
-def plot_monthly_trends_by_category(df: pd.DataFrame, year: int, category_colors=None):
+def plot_monthly_spend_by_category(df: pd.DataFrame, category_colors=None):
     # Step 1: Create full Month + Category grid
-    df_year = df[df['Year'] == year]
-    all_months = df_year[['MonthNum', 'Month']].drop_duplicates()
-    all_categories = df_year['Category'].drop_duplicates()
+    all_months = df[['MonthNum', 'Month']].drop_duplicates()
+    all_categories = df['Category'].drop_duplicates()
     month_category_grid = all_months.merge(all_categories, how='cross')
 
     # Step 2: Actual totals
-    actual_totals = df_year.groupby(['MonthNum', 'Month', 'Category'])['Cost'].sum().reset_index()
+    actual_totals = df.groupby(['MonthNum', 'Month', 'Category'])['Cost'].sum().reset_index()
 
     # Step 3: Merge and fill missing with zero
     filled_totals = month_category_grid.merge(actual_totals, on=['MonthNum', 'Month', 'Category'], how='left')
@@ -23,25 +22,24 @@ def plot_monthly_trends_by_category(df: pd.DataFrame, year: int, category_colors
         fig = px.line(
             filled_totals, x='Month', y='Cost',
             color='Category', markers=True,
-            title=f'Monthly Spending by Category ({year})',
+            title=f'Monthly Spending by Category',
             labels={'Cost': 'Total Cost ($)', 'Month': 'Month'}
         )
     else:
         fig = px.line(
             filled_totals, x='Month', y='Cost',
             color='Category', markers=True,
-            title=f'Monthly Spending by Category ({year})',
+            title=f'Monthly Spending by Category',
             labels={'Cost': 'Total Cost ($)', 'Month': 'Month'},
             color_discrete_map=category_colors
         )
 
     return fig
 
-def plot_monthly_spending_bars_by_category(df: pd.DataFrame, year: int, category_colors=None):
+def plot_monthly_spending_bars_by_category(df: pd.DataFrame, category_colors=None):
     # Step 1: Create full Month + Category grid
-    df_year = df[df['Year'] == year]
     # Group by MonthNum, Month, and Category
-    monthly_category_totals = df_year.groupby(['MonthNum', 'Month', 'Category'], sort=False)['Cost'].sum().reset_index()
+    monthly_category_totals = df.groupby(['MonthNum', 'Month', 'Category'], sort=False)['Cost'].sum().reset_index()
 
     # Sort by MonthNum for correct time order
     monthly_category_totals = monthly_category_totals.sort_values('MonthNum')
@@ -50,7 +48,7 @@ def plot_monthly_spending_bars_by_category(df: pd.DataFrame, year: int, category
     if category_colors is not None:
         fig = px.bar(
             monthly_category_totals, x='Month', y='Cost',
-            color='Category', title=f'Monthly Spending by Category ({year})',
+            color='Category', title=f'Monthly Spending by Category',
             labels={'Cost': 'Total Cost ($)', 'Month': 'Month'},
             color_discrete_map=category_colors,
             barmode='group'
@@ -58,40 +56,38 @@ def plot_monthly_spending_bars_by_category(df: pd.DataFrame, year: int, category
     else:
         fig = px.bar(
             monthly_category_totals, x='Month', y='Cost',
-            color='Category', title=f'Monthly Spending by Category ({year})',
+            color='Category', title=f'Monthly Spending by Category',
             labels={'Cost': 'Total Cost ($)', 'Month': 'Month'},
             barmode='group'
         )
     
     return fig
 
-def plot_annual_spending_pie_by_category(df: pd.DataFrame, year: int, category_colors=None):
+def plot_spending_by_category_pie(df: pd.DataFrame, category_colors=None):
     # Step 1: Create full Month + Category grid
-    df_year = df[df['Year'] == year]
     # Group data by Category and sum the costs
-    category_totals = df_year.groupby('Category')['Cost'].sum().reset_index()
+    category_totals = df.groupby('Category')['Cost'].sum().reset_index()
 
     # Create a pie chart
     if category_colors is not None:
         fig = px.pie(
             category_totals,
             names='Category', values='Cost', color="Category",
-            title=f'Monthly Spending by Category ({year})',
+            title=f'Monthly Spending by Category',
             color_discrete_map=category_colors
         )
     else:
         fig = px.pie(
             category_totals,
             names='Category', values='Cost', color="Category",
-            title=f'Monthly Spending by Category ({year})',
+            title=f'Monthly Spending by Category',
         )
 
     return fig
 
-def plot_avg_spend_per_item(df: pd.DataFrame, year: int, category_colors=None):
-    df_year = df[df['Year'] == year]
+def plot_avg_spend_per_category(df: pd.DataFrame, category_colors=None):
 
-    avg_spend = df_year.groupby('Category').agg(
+    avg_spend = df.groupby('Category').agg(
         Avg_Spend_Per_Item=('Cost', 'mean'),
         Total_Items=('Item', 'count'),
         Total_Spent=('Cost', 'sum')
@@ -103,7 +99,7 @@ def plot_avg_spend_per_item(df: pd.DataFrame, year: int, category_colors=None):
         x='Avg_Spend_Per_Item',
         text='Avg_Spend_Per_Item',
         hover_data=['Total_Items', 'Total_Spent'],
-        title=f'Average Spend per Item by Category ({year})',
+        title=f'Average Spend per Item by Category',
         labels={'Avg_Spend_Per_Item': 'Avg Spend ($)', 'Category': 'Category'},
         orientation='h'
     )
@@ -116,9 +112,8 @@ def plot_avg_spend_per_item(df: pd.DataFrame, year: int, category_colors=None):
 
     return fig
 
-def plot_top_items_in_category(df: pd.DataFrame, year: int, top_n: int = 10):
-    df_year = df[df['Year'] == year]
-    top_items = df_year.sort_values(by="Cost", ascending=False).head(top_n).reset_index(drop=True)
+def plot_top_items_in_category(df: pd.DataFrame, top_n: int = 10):
+    top_items = df.sort_values(by="Cost", ascending=False).head(top_n).reset_index(drop=True)
 
     fig = px.bar(
         top_items,
@@ -134,9 +129,8 @@ def plot_top_items_in_category(df: pd.DataFrame, year: int, top_n: int = 10):
 
     return fig
 
-def plot_monthly_spending_in_category(df: pd.DataFrame, year: int):
-    df_year = df[df['Year'] == year]
-    cat_monthly = df_year.groupby(['MonthNum', 'Month'])['Cost'].sum().reset_index()
+def plot_monthly_spending_in_category(df: pd.DataFrame):
+    cat_monthly = df.groupby(['MonthNum', 'Month'])['Cost'].sum().reset_index()
     cat_monthly = cat_monthly.sort_values('MonthNum').reset_index(drop=True)
 
     fig = px.bar(
@@ -150,6 +144,24 @@ def plot_monthly_spending_in_category(df: pd.DataFrame, year: int):
     fig.update_traces(texttemplate='$%{text:.2f}', textposition='outside')
     fig.update_layout(yaxis_tickprefix='$')
 
+    return fig
+
+def plot_cost_scatter(df: pd.DataFrame):
+
+    df = df.reset_index(drop=True)
+    df['Index'] = df.index + 1
+
+    fig = px.scatter(
+        df,
+        x='Index',
+        y='Cost',
+        title="Scatter Plot of Item Costs",
+        labels={'Index': 'Purchase Order', 'Cost': 'Item Cost ($)'},
+        hover_data=['Item', 'Category', 'Date'] if 'Date' in df.columns else ['Item', 'Category']
+    )
+
+    fig.update_layout(yaxis_tickprefix='$')
+    fig.update_layout(yaxis_type='log')
     return fig
 
 
