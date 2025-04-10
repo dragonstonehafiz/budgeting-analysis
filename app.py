@@ -1,6 +1,6 @@
 import streamlit as st
 from src.streamlit_init import init
-from src.streamlit_render import render_full_data, render_yearly
+from src.streamlit_render import render_yearly
 
 # Page config
 st.set_page_config(page_title="Spending Dashboard", layout="wide")
