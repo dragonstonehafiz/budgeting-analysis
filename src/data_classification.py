@@ -54,6 +54,24 @@ def generate_categories(client: OpenAI, items: list) -> str:
     return response.choices[0].message.content
 
 
+def create_category_string(metadata_filepath = "metadata/categories.csv"):
+    metadata_df = pd.read_csv(metadata_filepath, encoding="utf-8")
+    
+    categories = []
+    for index, row in metadata_df.iterrows():
+        name = row["Category"]
+        description = row["Description"]
+        example = row["Examples"]
+        
+        category_string = f"""**{name}**: {description}
+        Example items (Only 3): {example}"""
+        categories.append(category_string)
+        
+    category_string = "\n".join(categories)
+    
+    return category_string
+
+
 def classify_item(client: OpenAI, item_name: str, category_string: str) -> str:
     system_prompt = f"""
     You are a helpful assistant that classifies purchase items into exactly one of a predefined set of spending categories. 

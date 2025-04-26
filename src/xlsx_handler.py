@@ -58,9 +58,6 @@ def xlsx_format_rows(ws: Worksheet):
         elif category_value == "Digital Subscriptions":
             fill = FILL_SUBSCRIPTION
         
-        # Set the fill of the category cell
-        category_fill = FILL_MAP.get(category_value)
-        
         # Update values in each individual cell
         for col, col_letter in cols.items():
             cell: Cell = ws[f"{col_letter}{row}"]
