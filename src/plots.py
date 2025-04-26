@@ -67,20 +67,21 @@ def plot_spending_by_category_pie(df: pd.DataFrame, category_colors=None):
     # Step 1: Create full Month + Category grid
     # Group data by Category and sum the costs
     category_totals = df.groupby('Category')['Cost'].sum().reset_index()
+    title = "Total Spending by Category"
 
     # Create a pie chart
     if category_colors is not None:
         fig = px.pie(
             category_totals,
             names='Category', values='Cost', color="Category",
-            title=f'Monthly Spending by Category',
+            title=title,
             color_discrete_map=category_colors
         )
     else:
         fig = px.pie(
             category_totals,
             names='Category', values='Cost', color="Category",
-            title=f'Monthly Spending by Category',
+            title=title,
         )
 
     return fig

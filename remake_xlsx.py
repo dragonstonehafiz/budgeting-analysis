@@ -4,7 +4,7 @@ import openpyxl
 from src.xlsx_handler import xlsx_init_column, xlsx_format_rows, xlsx_create_category_dv, xlsx_create_category_cf
 
 # Load XLSX
-xlsx_path = "data/purchase.xlsx"
+xlsx_path = "data/purchases.xlsx"
 wb = openpyxl.load_workbook(xlsx_path)
 ws = wb.worksheets[0]
 ws.auto_filter.ref = "A1:G1"

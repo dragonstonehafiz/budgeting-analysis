@@ -48,7 +48,7 @@ def render_yearly(df: pd.DataFrame, category_colors: dict, selected_year: str=No
     with left:
         st.plotly_chart(plots.plot_spending_by_category_pie(df, category_colors=category_colors), use_container_width=True)
     with right:
-        st.markdown("**Total by Category**")
+        st.markdown("**Total Spending by Category**")
         category_totals = df.groupby('Category')['Cost'].sum().reset_index()
         category_totals = category_totals.sort_values(by='Cost', ascending=False).reset_index(drop=True)
         st.dataframe(category_totals.style.format({"Cost": "${:,.2f}"}), use_container_width=True)
@@ -75,12 +75,12 @@ def render_yearly(df: pd.DataFrame, category_colors: dict, selected_year: str=No
     
     with left:
         # Top purchases in that category
-        st.markdown("Most Expensive Purchases in Selected Category")
+        st.markdown("Top Purchases Table")
         top_cat_items = df_cat.sort_values(by="Cost", ascending=False).head(10).reset_index(drop=True)
         st.dataframe(top_cat_items[['Item', 'Cost', 'Date']].style.format({"Cost": "${:,.2f}"}), use_container_width=True)
 
     with right:
-        st.markdown("Most Expensive Purchases in Selected Category")
+        st.markdown("Top Purchases Chart")
         st.plotly_chart(plots.plot_top_items_in_category(df_cat), use_container_width=True)
         
     left, right = st.columns(2)
@@ -149,15 +149,3 @@ def render_yearly(df: pd.DataFrame, category_colors: dict, selected_year: str=No
     single_large = large_purchases[large_purchases['Item'].isin(item_counts[item_counts == 1].index)]
     single_large_table = single_large[['Item', 'Category', 'Cost', 'Date']].sort_values(by='Cost', ascending=False).reset_index(drop=True)
     st.dataframe(single_large_table.style.format({"Cost": "${:,.2f}"}), use_container_width=True)
-    
-    
-    # No-Spend Categories
-    if not full_data:
-        st.markdown("**No-Spend Categories** — Where you spent absolutely nothing")
-        all_categories = df['Category'].dropna().unique()
-        spent_categories = df['Category'].unique()
-        no_spend = sorted(set(all_categories) - set(spent_categories))
-        if no_spend:
-            st.write(", ".join(no_spend))
-        else:
-            st.success("You spent in every category this year!")
