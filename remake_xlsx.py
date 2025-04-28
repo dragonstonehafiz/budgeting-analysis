@@ -1,11 +1,13 @@
-import pandas as pd
 import openpyxl
+import datetime
 
 from src.xlsx_handler import xlsx_init_column, xlsx_format_rows, xlsx_create_category_dv, xlsx_create_category_cf
 
 # Load XLSX
 xlsx_path = "data/purchases.xlsx"
 wb = openpyxl.load_workbook(xlsx_path)
+now = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+wb.save(f"data/purchases_backup_{now}.xlsx")
 ws = wb.worksheets[0]
 ws.auto_filter.ref = "A1:G1"
 
