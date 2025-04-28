@@ -162,7 +162,7 @@ def plot_cost_scatter(df: pd.DataFrame):
     )
 
     fig.update_layout(yaxis_tickprefix='$')
-    fig.update_layout(yaxis_type='log')
+    # fig.update_layout(yaxis_type='log')
     return fig
 
 

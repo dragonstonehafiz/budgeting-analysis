@@ -47,6 +47,14 @@ def xlsx_format_rows(ws: Worksheet):
             month = date_value.month
             year = date_value.year
             fill = FILL_WHITE if month % 2 == 0 else FILL_GREY
+            
+            # Code here is just for me to change item names if it is too much to do by hand
+            # if "Game Pass Ultimate" in item_cell.value:
+            #     category_cell = ws[f"{cols.get("Category")}{row}"]
+            #     category_cell.value = "Digital Subscriptions"
+            # elif "netflix" in item_cell.value.lower():
+            #     item_cell.value = "Netflix"
+            
         else:
             fill = FILL_WHITE
         
