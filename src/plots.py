@@ -148,7 +148,6 @@ def plot_monthly_spending_in_category(df: pd.DataFrame):
     return fig
 
 def plot_cost_scatter(df: pd.DataFrame):
-
     df = df.reset_index(drop=True)
     df['Index'] = df.index + 1
 
@@ -220,3 +219,27 @@ def plot_monthly_spending_trends_by_year(df: pd.DataFrame):
 
     return fig
 
+
+def plot_monthly_spending(df: pd.DataFrame):
+    # Make sure 'Date' is datetime
+    df["Date"] = pd.to_datetime(df["Date"])
+
+    # Create a "Year-Month" column
+    df["YearMonth"] = df["Date"].dt.to_period("M").astype(str)
+
+    # Group by YearMonth and sum the Cost
+    monthly_spending = df.groupby("YearMonth")["Cost"].sum().reset_index()
+
+    # Plot
+    fig = px.line(
+        monthly_spending,
+        x="YearMonth",
+        y="Cost",
+        title="Monthly Spending Over Time",
+        labels={"Cost": "Total Spend ($)", "YearMonth": "Month"},
+        markers=True
+    )
+
+    fig.update_traces(line_shape="spline")  # Optional: Make line smooth
+    fig.update_layout(xaxis_tickangle=-45)  # Rotate x-axis labels for readability
+    return fig

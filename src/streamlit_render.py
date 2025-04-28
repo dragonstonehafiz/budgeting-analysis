@@ -38,13 +38,14 @@ def render_spending_summary(df: pd.DataFrame, category_colors: dict, full_data=T
     # --- GENERAL SECTION ---
     st.subheader("Spending Summary")
     
-    st.plotly_chart(plots.plot_monthly_spend_by_category(df, category_colors=category_colors), use_container_width=True)
+    if not full_data:
+        st.plotly_chart(plots.plot_monthly_spend_by_category(df, category_colors=category_colors), use_container_width=True)
 
-    # Totals by Month
-    st.markdown("**Total Spending by Month**")
-    month_totals = df.groupby(['MonthNum', 'Month'])['Cost'].sum().reset_index()
-    month_totals = month_totals.sort_values('MonthNum').reset_index(drop=True)
-    st.dataframe(month_totals[['Month', 'Cost']].style.format({"Cost": "${:,.2f}"}), use_container_width=True)
+        # Totals by Month
+        st.markdown("**Total Spending by Month**")
+        month_totals = df.groupby(['MonthNum', 'Month'])['Cost'].sum().reset_index()
+        month_totals = month_totals.sort_values('MonthNum').reset_index(drop=True)
+        st.dataframe(month_totals[['Month', 'Cost']].style.format({"Cost": "${:,.2f}"}), use_container_width=True)
     
 
     # Render Category Data
@@ -69,6 +70,7 @@ def render_spending_summary(df: pd.DataFrame, category_colors: dict, full_data=T
     render_top_items(df, 10)
 
     st.markdown("---")
+
 
 def render_category_breakdown(df: pd.DataFrame, category_colors: dict, full_data=True):
     # --- CATEGORY SECTION ---
@@ -205,7 +207,7 @@ def render_filter(df: pd.DataFrame, category_colors: dict):
     
     # Category to filter by
     category_options = df["Category"].dropna().unique()
-    selected_category = st.multiselect("Category Filter", category_options, key="category_filter")
+    selected_category = st.multiselect("Category Filter", category_options, key="category_filter", default=category_options)
     
     # Filter by category and date
     left, right = st.columns(2)
@@ -263,7 +265,11 @@ def render_filter(df: pd.DataFrame, category_colors: dict):
         category_totals = category_totals.sort_values(by='Cost', ascending=False).reset_index(drop=True)
         st.dataframe(category_totals.style.format({"Cost": "${:,.2f}"}), use_container_width=True)
     
+    # Display all items in the filtered df
     st.dataframe(filtered_df[['Item', 'Category', 'Cost', 'Date']], use_container_width=True)
+    
+    # Display spending from month to month
+    st.plotly_chart(plots.plot_monthly_spending(filtered_df), use_container_width=True)
     
     render_insights(filtered_df, category_colors=category_colors, full_data=True)
     
