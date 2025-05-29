@@ -8,23 +8,34 @@ xlsx_path = "data/purchases.xlsx"
 wb = openpyxl.load_workbook(xlsx_path)
 now = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
 wb.save(f"data/purchases_backup_{now}.xlsx")
+
+# Create new worksheet
 ws = wb.worksheets[0]
-ws.auto_filter.ref = "A1:G1"
+ws.auto_filter.ref = "A1:H1"
+
+# Initialize columns
+cols = {
+    "Item": ["A", 15],
+    "Category": ["B", 15],
+    "Cost": ["C", 10],
+    "Date": ["D", 12],
+    "Notes": ["E", 15],
+    "Month": ["F", 12],
+    "MonthNum": ["G", 5],
+    "Year": ["H", 10]
+}
 
 # Set column defaults
-xlsx_init_column(ws, "A", "Item", 15)
-xlsx_init_column(ws, "B", "Category", 15)
-xlsx_init_column(ws, "C", "Cost", 10)
-xlsx_init_column(ws, "D", "Date", 12)
-xlsx_init_column(ws, "E", "Month", 7)
-xlsx_init_column(ws, "F", "MonthNum", 5)
-xlsx_init_column(ws, "G", "Year", 10)
+for col, (col_letter, width) in cols.items():
+    xlsx_init_column(ws, col_letter, col, width)
+
+
 # Create category dropdown
 xlsx_create_category_dv(ws, "B")
 # Create conditional formatting for category
 xlsx_create_category_cf(ws, "B")
 # Format rows
-xlsx_format_rows(ws)
+xlsx_format_rows(ws, cols)
 
 # Save
 wb.save(xlsx_path)

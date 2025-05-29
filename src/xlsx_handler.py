@@ -24,42 +24,29 @@ def xlsx_init_column(ws: Worksheet, col_letter: str, text: str, width: float):
     col_obj.width = width
     
     
-def xlsx_format_rows(ws: Worksheet):
-    cols = {
-        "Item": "A",
-        "Category": "B",
-        "Cost": "C",
-        "Date": "D",
-        "Month": "E",
-        "MonthNum": "F",
-        "Year": "G"
-    }
+def xlsx_format_rows(ws: Worksheet, cols: dict):
+    item_col = cols.get("Item")[0]
+    date_col = cols.get("Date")[0]
+    category_col = cols.get("Category")[0]
     
     for row in tqdm(range(2, ws.max_row + 150)):
         # We're tracking if there is an entry in this part so we can continue adding formatting if there is no data
-        item_cell = ws[f"A{row}"]
+        item_cell = ws[f"{item_col}{row}"]
         is_empty = item_cell.value is None
         
         # Sets the fill of the cell based on the month
         if not is_empty:
-            date_cell: Cell = ws[f"{cols.get("Date")}{row}"]
+            date_cell: Cell = ws[f"{date_col}{row}"]
             date_value: datetime = date_cell.value
             month = date_value.month
             year = date_value.year
             fill = FILL_WHITE if month % 2 == 0 else FILL_GREY
             
-            # Code here is just for me to change item names if it is too much to do by hand
-            # if "Game Pass Ultimate" in item_cell.value:
-            #     category_cell = ws[f"{cols.get("Category")}{row}"]
-            #     category_cell.value = "Digital Subscriptions"
-            # elif "netflix" in item_cell.value.lower():
-            #     item_cell.value = "Netflix"
-            
         else:
             fill = FILL_WHITE
         
         # If the item is a subscription, change the fill to yellow
-        category_cell = ws[f"{cols.get("Category")}{row}"]
+        category_cell = ws[f"{category_col}{row}"]
         category_value = category_cell.value
         if is_empty:
             pass
@@ -67,7 +54,7 @@ def xlsx_format_rows(ws: Worksheet):
             fill = FILL_SUBSCRIPTION
         
         # Update values in each individual cell
-        for col, col_letter in cols.items():
+        for col, (col_letter, width) in cols.items():
             cell: Cell = ws[f"{col_letter}{row}"]
             cell.border = BORDER_LEFT_RIGHT
             # Default variables
@@ -75,7 +62,9 @@ def xlsx_format_rows(ws: Worksheet):
             cell.alignment = ALIGN_CENTER 
             
             if col == "Item":
-                cell.alignment = ALIGN_LEFT 
+                cell.alignment = ALIGN_LEFT
+            elif col == "Notes":
+                cell.alignment = ALIGN_LEFT
             elif col == "Category":
                 pass
             elif col == "Cost":
