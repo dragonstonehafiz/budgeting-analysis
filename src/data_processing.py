@@ -9,6 +9,9 @@ def load_df(filepath = "data/purchases.xlsx") -> pd.DataFrame:
     df['Item'] = df['Item'].astype(str)
     df['Category'] = df['Category'].astype(str)
     df['Year'] = df['Year'].astype(str)
+    
+    if 'Notes' in df.columns:
+        df['Notes']  = df['Notes'].astype(str)
 
-    return df    
+    return df
 

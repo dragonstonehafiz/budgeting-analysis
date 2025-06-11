@@ -46,6 +46,14 @@ def render_spending_summary(df: pd.DataFrame, category_colors: dict, full_data=T
         month_totals = df.groupby(['MonthNum', 'Month'])['Cost'].sum().reset_index()
         month_totals = month_totals.sort_values('MonthNum').reset_index(drop=True)
         st.dataframe(month_totals[['Month', 'Cost']].style.format({"Cost": "${:,.2f}"}), use_container_width=True)
+        
+        st.markdown("**Items Bought this Month**")
+        selected_month = st.selectbox("Month", options=df['Month'].unique())
+        month_items = df.loc[df['Month'] == selected_month]
+        month_items = month_items[['Item', 'Category', 'Cost', 'Date', "Notes"]]
+        # month_items = df.groupby(["MonthNum", 'Month'])
+        # month_items = month_totals.sort_values(by="Date", ascending=True).reset_index(drop=True)
+        st.dataframe(month_items)
     else:
         filtered_df = df[['Item', 'Category', 'Cost', 'Date', "Notes"]]
         st.plotly_chart(plots.plot_monthly_spending(filtered_df), use_container_width=True)

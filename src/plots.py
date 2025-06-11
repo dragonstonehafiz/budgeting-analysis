@@ -221,6 +221,7 @@ def plot_monthly_spending_trends_by_year(df: pd.DataFrame):
 
 
 def plot_monthly_spending(df: pd.DataFrame):
+    df = df.copy()
     # Make sure 'Date' is datetime
     df["Date"] = pd.to_datetime(df["Date"])
 
