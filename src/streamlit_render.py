@@ -32,7 +32,7 @@ def render_top_items(df: pd.DataFrame, n: int = 10, reverse = False):
     top_items = top_items.drop_duplicates(subset="Item")
     # Take top n
     top_items = top_items.head(n).reset_index(drop=True)
-    st.dataframe(top_items[['Item', 'Cost', 'Category', 'Date', "Notes"]].style.format({"Cost": "${:,.2f}"}), use_container_width=True)
+    st.dataframe(top_items[['Item', 'Cost', 'Category', 'Date', "Notes"]].style.format({"Cost": "${:,.2f}"}), use_container_width=True, hide_index=True)
 
 def render_spending_summary(df: pd.DataFrame, category_colors: dict, full_data=True):
     # --- GENERAL SECTION ---
@@ -41,39 +41,41 @@ def render_spending_summary(df: pd.DataFrame, category_colors: dict, full_data=T
     if not full_data:
         st.plotly_chart(plots.plot_monthly_spending_bars_by_category(df, category_colors=category_colors), use_container_width=True)
 
-        # Totals by Month
-        st.markdown("**Total Spending by Month**")
-        month_totals = df.groupby(['MonthNum', 'Month'])['Cost'].sum().reset_index()
-        month_totals = month_totals.sort_values('MonthNum').reset_index(drop=True)
-        st.dataframe(month_totals[['Month', 'Cost']].style.format({"Cost": "${:,.2f}"}), use_container_width=True)
+        left, right = st.columns([0.2, 0.8])
         
-        st.markdown("**Items Bought this Month**")
-        selected_month = st.selectbox("Month", options=df['Month'].unique())
-        month_items = df.loc[df['Month'] == selected_month]
-        month_items = month_items[['Item', 'Category', 'Cost', 'Date', "Notes"]]
-        # month_items = df.groupby(["MonthNum", 'Month'])
-        # month_items = month_totals.sort_values(by="Date", ascending=True).reset_index(drop=True)
-        st.dataframe(month_items)
+        with left:
+            # Totals by Month
+            st.markdown("**Total Spending by Month**")
+            month_totals = df.groupby(['MonthNum', 'Month'])['Cost'].sum().reset_index()
+            month_totals = month_totals.sort_values('MonthNum').reset_index(drop=True)
+            st.dataframe(month_totals[['Month', 'Cost']].style.format({"Cost": "${:,.2f}"}), use_container_width=True, hide_index=True, height=455)
+        
+        with right:
+            st.markdown("**Items Bought this Month**")
+            selected_month = st.selectbox("Month", options=df['Month'].unique())
+            month_items = df.loc[df['Month'] == selected_month]
+            month_items = month_items[['Item', 'Category', 'Cost', 'Date', "Notes"]]
+            st.dataframe(month_items, hide_index=True)
     else:
         filtered_df = df[['Item', 'Category', 'Cost', 'Date', "Notes"]]
         st.plotly_chart(plots.plot_monthly_spending(filtered_df), use_container_width=True)
     
 
     # Render Category Data
-    left, right = st.columns(2)
+    left, right = st.columns([0.7, 0.3])
     with left:
         st.plotly_chart(plots.plot_spending_by_category_pie(df, category_colors=category_colors), use_container_width=True)
     with right:
         st.markdown("**Total Spending by Category**")
         category_totals = df.groupby('Category')['Cost'].sum().reset_index()
         category_totals = category_totals.sort_values(by='Cost', ascending=False).reset_index(drop=True)
-        st.dataframe(category_totals.style.format({"Cost": "${:,.2f}"}), use_container_width=True)
+        st.dataframe(category_totals.style.format({"Cost": "${:,.2f}"}), use_container_width=True, hide_index=True)
 
-    left, right = st.columns(2)
+    left, right = st.columns([0.3, 0.7])
     with left:
         st.markdown("**Top 10 Most Expensive Items by Category**")
         top_by_cat = df.sort_values(by='Cost', ascending=False).groupby('Category').head(1).reset_index(drop=True)
-        st.dataframe(top_by_cat[['Category', 'Item', 'Cost', "Notes"]].style.format({"Cost": "${:,.2f}"}), use_container_width=True)
+        st.dataframe(top_by_cat[['Category', 'Item', 'Cost', "Notes"]].style.format({"Cost": "${:,.2f}"}), use_container_width=True, hide_index=True)
     with right:
         st.plotly_chart(plots.plot_avg_spend_per_category(df, category_colors=category_colors), use_container_width=True)
         
@@ -95,18 +97,18 @@ def render_category_breakdown(df: pd.DataFrame, category_colors: dict, full_data
     # Filtered view
     df_cat = df[df['Category'] == selected_category]
 
-    left, right = st.columns(2)
+    left, right = st.columns([0.3, 0.7])
     
     with left:
         # Top purchases in that category
         st.markdown("Top Purchases Table")
         top_cat_items = df_cat.sort_values(by="Cost", ascending=False).head(10).reset_index(drop=True)
-        st.dataframe(top_cat_items[['Item', 'Cost', 'Date', "Notes"]].style.format({"Cost": "${:,.2f}"}), use_container_width=True)
+        st.dataframe(top_cat_items[['Item', 'Cost', 'Date', "Notes"]].style.format({"Cost": "${:,.2f}"}), use_container_width=True, hide_index=True)
     with right:
         st.markdown("Top Purchases Chart")
         st.plotly_chart(plots.plot_top_items_in_category(df_cat), use_container_width=True)
         
-    left, right = st.columns(2)
+    left, right = st.columns([0.7, 0.3])
     
     if not full_data:
         with left:
@@ -117,7 +119,7 @@ def render_category_breakdown(df: pd.DataFrame, category_colors: dict, full_data
             st.markdown("Monthly Spending in Selected Category")
             cat_monthly = df_cat.groupby(['MonthNum', 'Month'])['Cost'].sum().reset_index()
             cat_monthly = cat_monthly.sort_values('MonthNum').reset_index(drop=True)
-            st.dataframe(cat_monthly[['Month', 'Cost']].style.format({"Cost": "${:,.2f}"}), use_container_width=True)
+            st.dataframe(cat_monthly[['Month', 'Cost']].style.format({"Cost": "${:,.2f}"}), use_container_width=True, hide_index=True, height=455)
         
     st.markdown("---")
 
@@ -135,7 +137,7 @@ def render_insights(df: pd.DataFrame, category_colors: dict, full_data=True):
         Count=('Cost', 'count'),
         Total_Spent=('Cost', 'sum')
     ).query('Total_Spent > 50').sort_values(by='Total_Spent', ascending=False).reset_index()
-    st.dataframe(sneaky_summary.style.format({"Total_Spent": "${:,.2f}"}), use_container_width=True)
+    st.dataframe(sneaky_summary.style.format({"Total_Spent": "${:,.2f}"}), use_container_width=True, hide_index=True)
 
     if not full_data:
         # New Recurring Items
@@ -149,7 +151,7 @@ def render_insights(df: pd.DataFrame, category_colors: dict, full_data=True):
             Count=('Cost', 'count'),
             Total_Spent=('Cost', 'sum')
         ).sort_values(by='Count', ascending=False).reset_index()
-        st.dataframe(new_summary.style.format({"Total_Spent": "${:,.2f}"}), use_container_width=True)
+        st.dataframe(new_summary.style.format({"Total_Spent": "${:,.2f}"}), use_container_width=True, hide_index=True)
 
     if not full_data:
         # Top Category per Month
@@ -162,7 +164,7 @@ def render_insights(df: pd.DataFrame, category_colors: dict, full_data=True):
         )
         monthly_winners = monthly_winners.sort_values('MonthNum').reset_index(drop=True)
         top_category_table = monthly_winners[['Month', 'Category', 'Cost']]
-        st.dataframe(top_category_table.style.format({"Cost": "${:,.2f}"}), use_container_width=True)
+        st.dataframe(top_category_table.style.format({"Cost": "${:,.2f}"}), use_container_width=True, hide_index=True)
 
     # Single Large Purchases
     threshold = df['Cost'].mean() + df['Cost'].std()
@@ -171,7 +173,7 @@ def render_insights(df: pd.DataFrame, category_colors: dict, full_data=True):
     item_counts = large_purchases['Item'].value_counts()
     single_large = large_purchases[large_purchases['Item'].isin(item_counts[item_counts == 1].index)]
     single_large_table = single_large[['Item', 'Category', 'Cost', 'Date', "Notes"]].sort_values(by='Cost', ascending=False).reset_index(drop=True)
-    st.dataframe(single_large_table.style.format({"Cost": "${:,.2f}"}), use_container_width=True)
+    st.dataframe(single_large_table.style.format({"Cost": "${:,.2f}"}), use_container_width=True, hide_index=True)
     
     
     # Recurring Items (5+ times)
@@ -181,7 +183,7 @@ def render_insights(df: pd.DataFrame, category_colors: dict, full_data=True):
         Count=('Cost', 'count'),
         Total_Spent=('Cost', 'sum')
     ).sort_values(by='Count', ascending=False).reset_index()
-    st.dataframe(recurring_summary.style.format({"Total_Spent": "${:,.2f}"}), use_container_width=True)
+    st.dataframe(recurring_summary.style.format({"Total_Spent": "${:,.2f}"}), use_container_width=True, hide_index=True)
 
 
 def render_filter(df: pd.DataFrame, category_colors: dict):
@@ -205,7 +207,7 @@ def render_filter(df: pd.DataFrame, category_colors: dict):
         "Standard Deviation": df["Cost"].std()
     }
     stats_df = pd.DataFrame(stats.items(), columns=["Statistic", "Value"])
-    st.dataframe(stats_df.style.format({"Value": "${:,.2f}"}), use_container_width=True)
+    st.dataframe(stats_df.style.format({"Value": "${:,.2f}"}), use_container_width=True, hide_index=True)
     
     st.subheader("Filter Parameters")
     
@@ -274,10 +276,10 @@ def render_filter(df: pd.DataFrame, category_colors: dict):
         st.markdown("**Total Spending by Category**")
         category_totals = filtered_df.groupby('Category')['Cost'].sum().reset_index()
         category_totals = category_totals.sort_values(by='Cost', ascending=False).reset_index(drop=True)
-        st.dataframe(category_totals.style.format({"Cost": "${:,.2f}"}), use_container_width=True)
+        st.dataframe(category_totals.style.format({"Cost": "${:,.2f}"}), use_container_width=True, hide_index=True)
     
     # Display all items in the filtered df
-    st.dataframe(filtered_df[['Item', 'Category', 'Cost', 'Date', "Notes"]], use_container_width=True)
+    st.dataframe(filtered_df[['Item', 'Category', 'Cost', 'Date', "Notes"]], use_container_width=True, hide_index=True)
     
     # Display spending from month to month
     st.plotly_chart(plots.plot_monthly_spending(filtered_df), use_container_width=True)
