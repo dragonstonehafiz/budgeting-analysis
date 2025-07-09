@@ -17,6 +17,7 @@ def render_yearly(df: pd.DataFrame, category_colors: dict, selected_year: str=No
         df = df[df["Category"].isin(selected_category)]
 
     render_spending_summary(df, category_colors, full_data=full_data)
+    render_statistics(df)
     render_category_breakdown(df, category_colors, full_data=full_data)
     render_insights(df, category_colors, full_data=full_data)
 
@@ -39,8 +40,6 @@ def render_spending_summary(df: pd.DataFrame, category_colors: dict, full_data=T
     st.subheader("Spending Summary")
     
     if not full_data:
-        st.plotly_chart(plots.plot_monthly_spending_bars_by_category(df, category_colors=category_colors), use_container_width=True)
-
         left, right = st.columns([0.2, 0.8])
         
         with left:
@@ -51,14 +50,49 @@ def render_spending_summary(df: pd.DataFrame, category_colors: dict, full_data=T
             st.dataframe(month_totals[['Month', 'Cost']].style.format({"Cost": "${:,.2f}"}), use_container_width=True, hide_index=True, height=455)
         
         with right:
-            st.markdown("**Items Bought this Month**")
-            selected_month = st.selectbox("Month", options=df['Month'].unique())
-            month_items = df.loc[df['Month'] == selected_month]
-            month_items = month_items[['Item', 'Category', 'Cost', 'Date', "Notes"]]
-            st.dataframe(month_items, hide_index=True)
+            # ----- Choose which trend plot to display ------------------------------------
+            plot_options = {
+                "Overall monthly spending": lambda d: plots.plot_spend_trend_line_month_and_category(
+                    d, category_colors=category_colors, category=False),
+                "Monthly spending by category": lambda d: plots.plot_spend_trend_line_month_and_category(
+                    d, category_colors=category_colors, category=True
+                ),
+            }
+
+            choice = st.selectbox(
+                "Select trend view", 
+                options=list(plot_options.keys())
+            )
+
+            # Generate and display the chosen figure
+            fig = plot_options[choice](df)
+            st.plotly_chart(fig, use_container_width=True)
+            
+        st.markdown("**Items Bought this Month**")
+        selected_month = st.selectbox("Month", options=df['Month'].unique())
+        month_items = df.loc[df['Month'] == selected_month]
+        month_items = month_items[['Item', 'Category', 'Cost', 'Date', "Notes"]]
+        st.dataframe(month_items, hide_index=True)
     else:
         filtered_df = df[['Item', 'Category', 'Cost', 'Date', "Notes"]]
-        st.plotly_chart(plots.plot_monthly_spending(filtered_df), use_container_width=True)
+        # ----- Choose which trend plot to display ------------------------------------
+        
+        plot_options = {
+            "Spending Trend Line (Month by Month)": lambda d: plots.plot_spend_trend_line_monthly(
+                d, category_colors=category_colors, category=False),
+            "Spending Trend Line (Month by Month) (Category)": lambda d: plots.plot_spend_trend_line_monthly(
+                d, category_colors=category_colors, category=True),
+            "Monthly Spending (Seperated by Year)": lambda d: plots.plot_spend_trend_line_month_and_year(d)
+        }
+
+        choice = st.selectbox(
+            "Select trend view", 
+            options=list(plot_options.keys())
+        )
+
+        # Generate and display the chosen figure
+        fig = plot_options[choice](df)
+        st.plotly_chart(fig, use_container_width=True)
     
 
     # Render Category Data
@@ -127,8 +161,6 @@ def render_category_breakdown(df: pd.DataFrame, category_colors: dict, full_data
 def render_insights(df: pd.DataFrame, category_colors: dict, full_data=True):
     # --- INSIGHTS SECTION ---
     st.subheader("Insights")
-
-    st.plotly_chart(plots.plot_cost_scatter(df), use_container_width=True)
     
     # Sneaky Totals (cheap items that added up)
     st.markdown("**Sneaky Totals** — Low-cost items that quietly piled up")
@@ -178,7 +210,7 @@ def render_insights(df: pd.DataFrame, category_colors: dict, full_data=True):
     
     # Recurring Items (5+ times)
     st.markdown("**Recurring Items (Bought 5+ Times)**")
-    recurring = df.groupby('Item').filter(lambda x: len(x) > 5)
+    recurring = df.groupby('Item').filter(lambda x: len(x) > 3)
     recurring_summary = recurring.groupby('Item').agg(
         Count=('Cost', 'count'),
         Total_Spent=('Cost', 'sum')
@@ -187,28 +219,9 @@ def render_insights(df: pd.DataFrame, category_colors: dict, full_data=True):
 
 
 def render_filter(df: pd.DataFrame, category_colors: dict):
+    render_statistics()
+    
     # --- FILTER SECTION ---
-    st.subheader("Statistics")
-    
-    left, right = st.columns(2)
-    with left:
-        render_top_items(df, 5)
-    with right:
-        render_top_items(df, 5, reverse=True)
-    
-    # Calculate statistics
-    stats = {
-        "Most Expensive": df["Cost"].max(),
-        "Least Expensive": df["Cost"].min(),
-        "Mean": df["Cost"].mean(),
-        "Median": df["Cost"].median(),
-        "25th Percentile (Lower)": df["Cost"].quantile(0.25),
-        "75th Percentile (Upper)": df["Cost"].quantile(0.75),
-        "Standard Deviation": df["Cost"].std()
-    }
-    stats_df = pd.DataFrame(stats.items(), columns=["Statistic", "Value"])
-    st.dataframe(stats_df.style.format({"Value": "${:,.2f}"}), use_container_width=True, hide_index=True)
-    
     st.subheader("Filter Parameters")
     
     # Terms to include and exclude
@@ -282,7 +295,42 @@ def render_filter(df: pd.DataFrame, category_colors: dict):
     st.dataframe(filtered_df[['Item', 'Category', 'Cost', 'Date', "Notes"]], use_container_width=True, hide_index=True)
     
     # Display spending from month to month
-    st.plotly_chart(plots.plot_monthly_spending(filtered_df), use_container_width=True)
+    st.plotly_chart(plots.plot_spend_trend_line_monthly(filtered_df), use_container_width=True)
     
     render_insights(filtered_df, category_colors=category_colors, full_data=True)
+    
+def render_statistics(df: pd.DataFrame):
+    st.subheader("Statistics")
+    
+    left, right = st.columns(2)
+    with left:
+        render_top_items(df, 5)
+    with right:
+        render_top_items(df, 5, reverse=True)
+    
+    total_spent = df["Cost"].sum()
+    most_expensive = df["Cost"].max()
+    least_expensive = df["Cost"].min()
+    col1, col2, col3 = st.columns(3)
+    col1.metric("Total Spent", f"${total_spent:,.2f}")
+    col2.metric("Most Expensive", f"${most_expensive:,.2f}")
+    col3.metric("Least Expensive", f"${least_expensive:,.2f}")
+    
+    mean = df["Cost"].mean()
+    median = df["Cost"].median()
+    std = df["Cost"].std()
+    col1, col2, col3 = st.columns(3)
+    col1.metric("Mean", f"${mean:,.2f}")
+    col2.metric("Median", f"${median:,.2f}")
+    col3.metric("Standard Deviation", f"${std:,.2f}")
+    
+    percentile_25th = df["Cost"].quantile(0.25)
+    percentile_75th = df["Cost"].quantile(0.75)
+    col1, col2, col3 = st.columns(3)
+    col1.metric("25th Percentile", 
+                f"${percentile_25th:,.2f}", 
+                help="Lower quartile: 25 % of transactions cost **less** than this amount.")
+    col3.metric("75th Percentile", 
+                f"${percentile_75th:,.2f}",
+                help="Upper quartile: 75 % of transactions cost **this amount or less**—only the most-expensive 25 % exceed it.")
     

@@ -1,42 +1,83 @@
 import plotly.express as px
 import pandas as pd
 
-def plot_monthly_spend_by_category(df: pd.DataFrame, category_colors=None):
-    # Step 1: Create full Month + Category grid
-    all_months = df[['MonthNum', 'Month']].drop_duplicates()
-    all_categories = df['Category'].drop_duplicates()
-    month_category_grid = all_months.merge(all_categories, how='cross')
+def plot_spend_trend_line_month_and_category(
+        df: pd.DataFrame,
+        category_colors: dict | None = None,
+        category: bool = False
+    ):
+    """Plot monthly spending.
 
-    # Step 2: Actual totals
-    actual_totals = df.groupby(['MonthNum', 'Month', 'Category'])['Cost'].sum().reset_index()
+    Parameters
+    ----------
+    df : DataFrame
+        Needs columns 'Date', 'Cost', and (if category=True) 'Category'.
+    category_colors : dict, optional
+        Mapping {category: colour}. Used only when category=True.
+    category : bool, default False
+        False → single aggregate line; True → separate line per category.
+    """
+    df = df.copy()
 
-    # Step 3: Merge and fill missing with zero
-    filled_totals = month_category_grid.merge(actual_totals, on=['MonthNum', 'Month', 'Category'], how='left')
-    filled_totals['Cost'] = filled_totals['Cost'].fillna(0)
+    # 1️⃣ Ensure date column and derive month order + label
+    df["Date"] = pd.to_datetime(df["Date"])
+    df["MonthNum"] = df["Date"].dt.to_period("M").apply(lambda p: p.to_timestamp())
+    df["Month"] = df["MonthNum"].dt.strftime("%Y-%m")   # e.g. '2025-01'
 
-    # Step 4: Sort by MonthNum for time order
-    filled_totals = filled_totals.sort_values('MonthNum')
+    # 2️⃣ Build a complete Month(+Category) grid so missing combinations show as 0
+    months = df[["MonthNum", "Month"]].drop_duplicates()
+    if category:
+        cats = df["Category"].drop_duplicates()
+        full_grid = months.merge(cats, how="cross")
+        totals = (
+            df.groupby(["MonthNum", "Month", "Category"], as_index=False)["Cost"]
+              .sum()
+        )
+        filled = (
+            full_grid.merge(totals, on=["MonthNum", "Month", "Category"], how="left")
+                     .fillna({"Cost": 0})
+                     .sort_values("MonthNum")
+        )
+    else:
+        full_grid = months
+        totals = (
+            df.groupby(["MonthNum", "Month"], as_index=False)["Cost"]
+              .sum()
+        )
+        filled = (
+            full_grid.merge(totals, on=["MonthNum", "Month"], how="left")
+                     .fillna({"Cost": 0})
+                     .sort_values("MonthNum")
+        )
 
-    # Step 5: Plot
-    if category_colors is None:
+    # 3️⃣ Plot
+    base_kwargs = dict(
+        x="Month",
+        y="Cost",
+        markers=True,
+        labels={"Cost": "Total Cost ($)", "Month": "Month"},
+    )
+
+    if category:
         fig = px.line(
-            filled_totals, x='Month', y='Cost',
-            color='Category', markers=True,
-            title=f'Monthly Spending by Category',
-            labels={'Cost': 'Total Cost ($)', 'Month': 'Month'}
+            filled,
+            color="Category",
+            title="Monthly Spending by Category",
+            **base_kwargs,
+            color_discrete_map=category_colors
         )
     else:
         fig = px.line(
-            filled_totals, x='Month', y='Cost',
-            color='Category', markers=True,
-            title=f'Monthly Spending by Category',
-            labels={'Cost': 'Total Cost ($)', 'Month': 'Month'},
-            color_discrete_map=category_colors
+            filled,
+            title="Monthly Spending Over Time",
+            **base_kwargs
         )
 
+    fig.update_layout(xaxis_tickangle=-45)
     return fig
 
-def plot_monthly_spending_bars_by_category(df: pd.DataFrame, category_colors=None):
+
+def plot_spend_trend_bars_month_and_category(df: pd.DataFrame, category_colors=None):
     # Step 1: Create full Month + Category grid
     # Group by MonthNum, Month, and Category
     monthly_category_totals = df.groupby(['MonthNum', 'Month', 'Category'], sort=False)['Cost'].sum().reset_index()
@@ -62,6 +103,87 @@ def plot_monthly_spending_bars_by_category(df: pd.DataFrame, category_colors=Non
         )
     
     return fig
+
+def plot_spend_trend_line_month_and_year(df: pd.DataFrame):
+    # Step 1: Create full Month + Year grid
+    all_months = df[['MonthNum', 'Month']].drop_duplicates()
+    all_years = df['Year'].drop_duplicates()
+    month_year_grid = all_months.merge(all_years, how='cross')
+
+    # Step 2: Actual totals per Year and Month
+    yearly_totals = df.groupby(['MonthNum', 'Month', 'Year'])['Cost'].sum().reset_index()
+
+    # Step 3: Merge and fill missing months with 0
+    filled_yearly_totals = month_year_grid.merge(yearly_totals, on=['MonthNum', 'Month', 'Year'], how='left')
+    filled_yearly_totals['Cost'] = filled_yearly_totals['Cost'].fillna(0)
+
+    # Step 4: Sort for correct time order
+    filled_yearly_totals = filled_yearly_totals.sort_values(['Year', 'MonthNum'])
+
+    # Step 5: Plot
+    fig = px.line(
+        filled_yearly_totals, x='Month', y='Cost',
+        color='Year', markers=True,
+        title='Monthly Spending by Year',
+        labels={'Cost': 'Total Cost ($)', 'Month': 'Month'},
+    )
+
+    return fig
+
+def plot_spend_trend_line_monthly(
+    df: pd.DataFrame,
+    category_colors: dict | None = None,
+    category: bool = False,
+):
+    """Return a Plotly line chart of monthly spending.
+
+    Parameters
+    ----------
+    df : DataFrame
+        Must contain columns 'Date', 'Cost', and (if category=True) 'Category'.
+    category_colors : dict, optional
+        Mapping {category_name: hex_color}. Only used when category=True.
+    category : bool, default False
+        If True, plot one line per category; otherwise plot the aggregate.
+    """
+    df = df.copy()
+
+    # 1️⃣ Ensure datetime and Year-Month key
+    df["Date"] = pd.to_datetime(df["Date"])
+    df["YearMonth"] = df["Date"].dt.to_period("M").astype(str)
+
+    # 2️⃣ Aggregate
+    if category:
+        monthly = (df.groupby(["YearMonth", "Category"], as_index=False)["Cost"].sum())
+    else:
+        monthly = (df.groupby("YearMonth", as_index=False)["Cost"].sum())
+
+    # 3️⃣ Build the figure
+    base_kwargs = dict(
+        x="YearMonth",
+        y="Cost",
+        markers=True,
+        labels={"Cost": "Total Spend ($)", "YearMonth": "Month"},
+    )
+
+    if category:
+        fig = px.line(
+            monthly,
+            color="Category",
+            title="Monthly Spending by Category",
+            **base_kwargs,
+            color_discrete_map=category_colors,
+        )
+    else:
+        fig = px.line(
+            monthly,
+            title="Monthly Spending Over Time",
+            **base_kwargs,
+        )
+
+    fig.update_layout(xaxis_tickangle=-45)
+    return fig
+
 
 def plot_spending_by_category_pie(df: pd.DataFrame, category_colors=None):
     # Step 1: Create full Month + Category grid
@@ -193,54 +315,3 @@ def plot_annual_spending_by_category(df: pd.DataFrame, category_colors=None):
 
     return fig
 
-def plot_monthly_spending_trends_by_year(df: pd.DataFrame):
-    # Step 1: Create full Month + Year grid
-    all_months = df[['MonthNum', 'Month']].drop_duplicates()
-    all_years = df['Year'].drop_duplicates()
-    month_year_grid = all_months.merge(all_years, how='cross')
-
-    # Step 2: Actual totals per Year and Month
-    yearly_totals = df.groupby(['MonthNum', 'Month', 'Year'])['Cost'].sum().reset_index()
-
-    # Step 3: Merge and fill missing months with 0
-    filled_yearly_totals = month_year_grid.merge(yearly_totals, on=['MonthNum', 'Month', 'Year'], how='left')
-    filled_yearly_totals['Cost'] = filled_yearly_totals['Cost'].fillna(0)
-
-    # Step 4: Sort for correct time order
-    filled_yearly_totals = filled_yearly_totals.sort_values(['Year', 'MonthNum'])
-
-    # Step 5: Plot
-    fig = px.line(
-        filled_yearly_totals, x='Month', y='Cost',
-        color='Year', markers=True,
-        title='Monthly Spending by Year',
-        labels={'Cost': 'Total Cost ($)', 'Month': 'Month'},
-    )
-
-    return fig
-
-
-def plot_monthly_spending(df: pd.DataFrame):
-    df = df.copy()
-    # Make sure 'Date' is datetime
-    df["Date"] = pd.to_datetime(df["Date"])
-
-    # Create a "Year-Month" column
-    df["YearMonth"] = df["Date"].dt.to_period("M").astype(str)
-
-    # Group by YearMonth and sum the Cost
-    monthly_spending = df.groupby("YearMonth")["Cost"].sum().reset_index()
-
-    # Plot
-    fig = px.line(
-        monthly_spending,
-        x="YearMonth",
-        y="Cost",
-        title="Monthly Spending Over Time",
-        labels={"Cost": "Total Spend ($)", "YearMonth": "Month"},
-        markers=True
-    )
-
-    fig.update_traces(line_shape="spline")  # Optional: Make line smooth
-    fig.update_layout(xaxis_tickangle=-45)  # Rotate x-axis labels for readability
-    return fig
