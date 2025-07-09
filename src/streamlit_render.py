@@ -219,7 +219,7 @@ def render_insights(df: pd.DataFrame, category_colors: dict, full_data=True):
 
 
 def render_filter(df: pd.DataFrame, category_colors: dict):
-    render_statistics()
+    render_statistics(df)
     
     # --- FILTER SECTION ---
     st.subheader("Filter Parameters")
