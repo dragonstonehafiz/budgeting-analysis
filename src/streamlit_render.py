@@ -74,27 +74,8 @@ def render_spending_summary(df: pd.DataFrame, category_colors: dict, full_data=T
         month_items = month_items[['Item', 'Category', 'Cost', 'Date', "Notes"]]
         st.dataframe(month_items, hide_index=True)
     else:
-        filtered_df = df[['Item', 'Category', 'Cost', 'Date', "Notes"]]
-        # ----- Choose which trend plot to display ------------------------------------
-        
-        plot_options = {
-            "Spending Trend Line (Month by Month)": lambda d: plots.plot_spend_trend_line_monthly(
-                d, category_colors=category_colors, category=False),
-            "Spending Trend Line (Month by Month) (Category)": lambda d: plots.plot_spend_trend_line_monthly(
-                d, category_colors=category_colors, category=True),
-            "Monthly Spending (Seperated by Year)": lambda d: plots.plot_spend_trend_line_month_and_year(d)
-        }
-
-        choice = st.selectbox(
-            "Select trend view", 
-            options=list(plot_options.keys())
-        )
-
-        # Generate and display the chosen figure
-        fig = plot_options[choice](df)
-        st.plotly_chart(fig, use_container_width=True)
+        render_trend_line_full_data(df, category_colors)
     
-
     # Render Category Data
     left, right = st.columns([0.7, 0.3])
     with left:
@@ -118,6 +99,26 @@ def render_spending_summary(df: pd.DataFrame, category_colors: dict, full_data=T
 
     st.markdown("---")
 
+def render_trend_line_full_data(df: pd.DataFrame, category_colors: dict):
+    filtered_df = df[['Item', 'Category', 'Cost', 'Date', "Notes"]]
+    # ----- Choose which trend plot to display ------------------------------------
+    
+    plot_options = {
+        "Spending Trend Line (Month by Month)": lambda d: plots.plot_spend_trend_line_monthly(
+            d, category_colors=category_colors, category=False),
+        "Spending Trend Line (Month by Month) (Category)": lambda d: plots.plot_spend_trend_line_monthly(
+            d, category_colors=category_colors, category=True),
+        "Monthly Spending (Seperated by Year)": lambda d: plots.plot_spend_trend_line_month_and_year(d)
+    }
+
+    choice = st.selectbox(
+        "Select trend view", 
+        options=list(plot_options.keys())
+    )
+
+    # Generate and display the chosen figure
+    fig = plot_options[choice](df)
+    st.plotly_chart(fig, use_container_width=True)
 
 def render_category_breakdown(df: pd.DataFrame, category_colors: dict, full_data=True):
     # --- CATEGORY SECTION ---
@@ -279,6 +280,9 @@ def render_filter(df: pd.DataFrame, category_colors: dict):
         (filtered_df["Cost"] <= max_cost)
     ]
     
+    # Display spending from month to month
+    render_trend_line_full_data(df, category_colors)
+    
     st.subheader("Filtered Data")
     
     # Render Category Data
@@ -293,9 +297,6 @@ def render_filter(df: pd.DataFrame, category_colors: dict):
     
     # Display all items in the filtered df
     st.dataframe(filtered_df[['Item', 'Category', 'Cost', 'Date', "Notes"]], use_container_width=True, hide_index=True)
-    
-    # Display spending from month to month
-    st.plotly_chart(plots.plot_spend_trend_line_monthly(filtered_df), use_container_width=True)
     
     render_insights(filtered_df, category_colors=category_colors, full_data=True)
     
