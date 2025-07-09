@@ -17,6 +17,7 @@ def render_yearly(df: pd.DataFrame, category_colors: dict, selected_year: str=No
         df = df[df["Category"].isin(selected_category)]
 
     render_spending_summary(df, category_colors, full_data=full_data)
+    st.subheader("Statistics")
     render_statistics(df)
     render_category_breakdown(df, category_colors, full_data=full_data)
     render_insights(df, category_colors, full_data=full_data)
@@ -120,6 +121,7 @@ def render_trend_line_full_data(df: pd.DataFrame, category_colors: dict):
     fig = plot_options[choice](df)
     st.plotly_chart(fig, use_container_width=True)
 
+
 def render_category_breakdown(df: pd.DataFrame, category_colors: dict, full_data=True):
     # --- CATEGORY SECTION ---
     st.subheader("Category Breakdown")
@@ -220,8 +222,8 @@ def render_insights(df: pd.DataFrame, category_colors: dict, full_data=True):
 
 
 def render_filter(df: pd.DataFrame, category_colors: dict):
+    st.subheader("Statistics")
     render_statistics(df)
-    
     # --- FILTER SECTION ---
     st.subheader("Filter Parameters")
     
@@ -285,6 +287,8 @@ def render_filter(df: pd.DataFrame, category_colors: dict):
     
     st.subheader("Filtered Data")
     
+    render_statistics(df=filtered_df)
+    
     # Render Category Data
     left, right = st.columns(2)
     with left:
@@ -294,6 +298,7 @@ def render_filter(df: pd.DataFrame, category_colors: dict):
         category_totals = filtered_df.groupby('Category')['Cost'].sum().reset_index()
         category_totals = category_totals.sort_values(by='Cost', ascending=False).reset_index(drop=True)
         st.dataframe(category_totals.style.format({"Cost": "${:,.2f}"}), use_container_width=True, hide_index=True)
+        
     
     # Display all items in the filtered df
     st.dataframe(filtered_df[['Item', 'Category', 'Cost', 'Date', "Notes"]], use_container_width=True, hide_index=True)
@@ -301,8 +306,6 @@ def render_filter(df: pd.DataFrame, category_colors: dict):
     render_insights(filtered_df, category_colors=category_colors, full_data=True)
     
 def render_statistics(df: pd.DataFrame):
-    st.subheader("Statistics")
-    
     left, right = st.columns(2)
     with left:
         render_top_items(df, 5)
@@ -312,10 +315,15 @@ def render_statistics(df: pd.DataFrame):
     total_spent = df["Cost"].sum()
     most_expensive = df["Cost"].max()
     least_expensive = df["Cost"].min()
+    total_items_bought = df.count()
     col1, col2, col3 = st.columns(3)
     col1.metric("Total Spent", f"${total_spent:,.2f}")
     col2.metric("Most Expensive", f"${most_expensive:,.2f}")
     col3.metric("Least Expensive", f"${least_expensive:,.2f}")
+    
+    total_items_bought = df["Cost"].count()
+    col1, col2, col3 = st.columns(3)
+    col2.metric("Total Items Bought", f"{total_items_bought:,}")
     
     mean = df["Cost"].mean()
     median = df["Cost"].median()
