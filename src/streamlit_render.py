@@ -3,22 +3,22 @@ import src.plots as plots
 import pandas as pd
 
 def render_yearly(df: pd.DataFrame, category_colors: dict, selected_year: str=None, full_data=True):
-    st.subheader("Statistics")
-    render_statistics(df)
-    
-    st.header("Spending Insights")
-    df = df.copy()
-    
     # Filter year
     if not full_data:
         df = df[df['Year'] == selected_year]
+        
+    st.subheader("Statistics")
+    render_statistics(df)
         
     # Category to filter by
     category_options = df["Category"].dropna().unique()
     selected_category = st.multiselect("Category Filter", category_options, key="category_filter", default=category_options)
     if len(selected_category) > 0:
         df = df[df["Category"].isin(selected_category)]
+        
 
+    st.header("Spending Insights")
+    df = df.copy()
     render_spending_summary(df, category_colors, full_data=full_data)
     render_category_breakdown(df, category_colors, full_data=full_data)
     render_insights(df, category_colors, full_data=full_data)
@@ -299,7 +299,6 @@ def render_filter(df: pd.DataFrame, category_colors: dict):
         category_totals = filtered_df.groupby('Category')['Cost'].sum().reset_index()
         category_totals = category_totals.sort_values(by='Cost', ascending=False).reset_index(drop=True)
         st.dataframe(category_totals.style.format({"Cost": "${:,.2f}"}), use_container_width=True, hide_index=True)
-        
     
     # Display all items in the filtered df
     st.dataframe(filtered_df[['Item', 'Category', 'Cost', 'Date', "Notes"]], use_container_width=True, hide_index=True)
