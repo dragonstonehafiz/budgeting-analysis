@@ -20,9 +20,23 @@ def plot_spend_trend_line_month_and_category(
     df = df.copy()
 
     # 1️⃣ Ensure date column and derive month order + label
-    df["Date"] = pd.to_datetime(df["Date"])
+    # Ensure proper datetime conversion
+    df["Date"] = pd.to_datetime(df["Date"], errors="coerce", dayfirst=True)
+
+    # Print rows where Date conversion failed
+    bad_dates = df[df["Date"].isna()]
+    if not bad_dates.empty:
+        print("⚠️ Rows with invalid or unrecognized date formats:")
+        print("Excel Rows:", bad_dates.index + 2)  # +2 = +1 for 1-based, +1 for header row
+        print(bad_dates[["Item", "Date"]])
+
+    # Derive month-related columns
     df["MonthNum"] = df["Date"].dt.to_period("M").dt.to_timestamp()
-    df["Month"] = df["MonthNum"].dt.strftime("%Y-%m")   # e.g. '2025-01'
+    df["Month"] = df["MonthNum"].dt.strftime("%Y-%m")
+
+    # Fill NaT values (optional display-friendly handling)
+    df["MonthNum"] = df["MonthNum"].fillna(pd.NaT)
+    df["Month"] = df["Month"].fillna("Unknown")
 
     # 2️⃣ Build a complete Month(+Category) grid so missing combinations show as 0
     months = df[["MonthNum", "Month"]].drop_duplicates()
