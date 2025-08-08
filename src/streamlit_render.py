@@ -3,6 +3,9 @@ import src.plots as plots
 import pandas as pd
 
 def render_yearly(df: pd.DataFrame, category_colors: dict, selected_year: str=None, full_data=True):
+    st.subheader("Statistics")
+    render_statistics(df)
+    
     st.header("Spending Insights")
     df = df.copy()
     
@@ -17,8 +20,6 @@ def render_yearly(df: pd.DataFrame, category_colors: dict, selected_year: str=No
         df = df[df["Category"].isin(selected_category)]
 
     render_spending_summary(df, category_colors, full_data=full_data)
-    st.subheader("Statistics")
-    render_statistics(df)
     render_category_breakdown(df, category_colors, full_data=full_data)
     render_insights(df, category_colors, full_data=full_data)
 
