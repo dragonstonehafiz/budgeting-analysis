@@ -281,22 +281,62 @@ def plot_avg_spend_per_category(df: pd.DataFrame, category_colors=None):
 
     return fig
 
-def plot_top_items_in_category(df: pd.DataFrame, top_n: int = 10):
-    top_items = df.sort_values(by="Cost", ascending=False).head(top_n).reset_index(drop=True)
 
-    fig = px.bar(
-        top_items,
-        x='Cost',
-        y='Item',
-        orientation='h',
-        title='Top Items by Cost',
-        labels={'Cost': 'Cost ($)', 'Item': 'Item'},
-        text='Cost'
+def plot_top_items_in_category(df: pd.DataFrame, top_n: int = 10):
+    # Step 1: Get top N items by total spend
+    item_totals = (
+        df.groupby("Item", as_index=False)["Cost"]
+          .sum()
+          .sort_values("Cost", ascending=False)
+          .rename(columns={"Cost": "TotalCost"})
     )
-    fig.update_traces(texttemplate='$%{text:.2f}', textposition='outside')
-    fig.update_layout(xaxis_tickprefix='$', yaxis=dict(autorange="reversed"))
+    top_items = item_totals.head(top_n)["Item"].tolist()
+
+    # Step 2: Filter and prepare data
+    df_filtered = df[df["Item"].isin(top_items)].copy()
+    df_filtered["Item"] = pd.Categorical(df_filtered["Item"], categories=top_items[::-1], ordered=True)
+    df_filtered = df_filtered.sort_values(["Item", "Cost"], ascending=[False, False])
+
+    # Step 3: Create stacked bars for individual purchases
+    fig = px.bar(
+        df_filtered,
+        x="Cost",
+        y="Item",
+        orientation="h",
+        title="Top Items by Total Cost",
+        labels={"Cost": "Cost ($)", "Item": "Item"},
+        text="Cost",
+        color_discrete_sequence=["#1f77b4"]
+    )
+
+    fig.update_traces(
+        texttemplate="$%{text:,.2f}",
+        textposition="inside"
+    )
+
+    # Step 4: Add transparent bars with end-of-bar total text
+    for _, row in item_totals[item_totals["Item"].isin(top_items)].iterrows():
+        fig.add_annotation(
+            x=row["TotalCost"],
+            y=row["Item"],
+            text=f"${row['TotalCost']:,.2f}",
+            showarrow=False,
+            xanchor="left",
+            yanchor="middle",
+            font=dict(color="black", size=12)
+        )
+
+    # Final layout
+    fig.update_layout(
+        barmode="stack",
+        xaxis_tickprefix="$",
+        yaxis=dict(autorange="reversed"),
+        showlegend=False
+    )
 
     return fig
+
+
 
 def plot_monthly_spending_in_category(df: pd.DataFrame):
     cat_monthly = df.groupby(['MonthNum', 'Month'])['Cost'].sum().reset_index()
