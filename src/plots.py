@@ -20,33 +20,25 @@ def plot_spend_trend_line_month_and_category(
     df = df.copy()
 
     # 1️⃣ Ensure date column and derive month order + label
-    # Ensure proper datetime conversion
     df["Date"] = pd.to_datetime(df["Date"], errors="coerce", dayfirst=True)
 
-    # Print rows where Date conversion failed
     bad_dates = df[df["Date"].isna()]
     if not bad_dates.empty:
         print("⚠️ Rows with invalid or unrecognized date formats:")
-        print("Excel Rows:", bad_dates.index + 2)  # +2 = +1 for 1-based, +1 for header row
+        print("Excel Rows:", bad_dates.index + 2)
         print(bad_dates[["Item", "Date"]])
 
-    # Derive month-related columns
     df["MonthNum"] = df["Date"].dt.to_period("M").dt.to_timestamp()
     df["Month"] = df["MonthNum"].dt.strftime("%Y-%m")
-
-    # Fill NaT values (optional display-friendly handling)
     df["MonthNum"] = df["MonthNum"].fillna(pd.NaT)
     df["Month"] = df["Month"].fillna("Unknown")
 
-    # 2️⃣ Build a complete Month(+Category) grid so missing combinations show as 0
+    # 2️⃣ Build full grid
     months = df[["MonthNum", "Month"]].drop_duplicates()
     if category:
         cats = df["Category"].drop_duplicates()
         full_grid = months.merge(cats, how="cross")
-        totals = (
-            df.groupby(["MonthNum", "Month", "Category"], as_index=False)["Cost"]
-              .sum()
-        )
+        totals = df.groupby(["MonthNum", "Month", "Category"], as_index=False)["Cost"].sum()
         filled = (
             full_grid.merge(totals, on=["MonthNum", "Month", "Category"], how="left")
                      .fillna({"Cost": 0})
@@ -54,10 +46,7 @@ def plot_spend_trend_line_month_and_category(
         )
     else:
         full_grid = months
-        totals = (
-            df.groupby(["MonthNum", "Month"], as_index=False)["Cost"]
-              .sum()
-        )
+        totals = df.groupby(["MonthNum", "Month"], as_index=False)["Cost"].sum()
         filled = (
             full_grid.merge(totals, on=["MonthNum", "Month"], how="left")
                      .fillna({"Cost": 0})
@@ -79,12 +68,55 @@ def plot_spend_trend_line_month_and_category(
             title="Monthly Spending by Category",
             **base_kwargs,
             color_discrete_map=category_colors
-        )
+        ) 
+        # 🔹 Add category-specific average lines
+        if category_colors:
+            cat_avgs = (
+                filled.groupby("Category", as_index=False)["Cost"]
+                .mean()
+                .rename(columns={"Cost": "AvgCost"})
+            )
+
+            for _, row in cat_avgs.iterrows():
+                cat = row["Category"]
+                avg = row["AvgCost"]
+                color = category_colors.get(cat, "gray")
+
+                fig.add_hline(
+                    y=avg,
+                    line_dash="dot",
+                    line_color=color,
+                    annotation_text=f"{cat} Avg: ${avg:,.2f}",
+                    annotation_position="top left",
+                    annotation_font_color=color,
+                    opacity=0.6
+                )
     else:
         fig = px.line(
             filled,
             title="Monthly Spending Over Time",
+            text="Cost",  # 🔹 show amount at each point
             **base_kwargs
+        )
+
+        # Add average horizontal line
+        avg_cost = filled["Cost"].mean()
+        fig.add_hline(
+            y=avg_cost,
+            line_dash="dot",
+            line_color="gray",
+            annotation_text=f"Average: ${avg_cost:.2f}",
+            annotation_position="top left"
+        )
+        
+        # 🔹 Format point labels
+        fig.update_traces(
+            texttemplate="$%{text:,.2f}",
+            textposition="top center",
+            textfont=dict(
+                color="black",  # ✅ more visible
+                size=12         # optional: bump size for clarity
+            )
         )
 
     fig.update_layout(xaxis_tickangle=-45)
