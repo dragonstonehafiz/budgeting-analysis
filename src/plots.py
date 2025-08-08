@@ -21,7 +21,7 @@ def plot_spend_trend_line_month_and_category(
 
     # 1️⃣ Ensure date column and derive month order + label
     df["Date"] = pd.to_datetime(df["Date"])
-    df["MonthNum"] = df["Date"].dt.to_period("M").apply(lambda p: p.to_timestamp())
+    df["MonthNum"] = df["Date"].dt.to_period("M").dt.to_timestamp()
     df["Month"] = df["MonthNum"].dt.strftime("%Y-%m")   # e.g. '2025-01'
 
     # 2️⃣ Build a complete Month(+Category) grid so missing combinations show as 0
