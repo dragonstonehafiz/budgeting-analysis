@@ -31,8 +31,7 @@ def render_top_items(df: pd.DataFrame, n: int = 10, reverse = False):
     
     # Sort
     top_items = df.sort_values(by="Cost", ascending=reverse)
-    # Drop duplicates by item name
-    top_items = top_items.drop_duplicates(subset="Item")
+    
     # Take top n
     top_items = top_items.head(n).reset_index(drop=True)
     st.dataframe(top_items[['Item', 'Cost', 'Category', 'Date', "Notes"]].style.format({"Cost": "${:,.2f}"}), use_container_width=True, hide_index=True)
