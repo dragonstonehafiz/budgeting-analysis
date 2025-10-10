@@ -11,6 +11,7 @@ from PySide6.QtWidgets import (
 )
 from PySide6.QtCore import Qt, QAbstractTableModel, QModelIndex, QSortFilterProxyModel, QSize
 from PySide6.QtGui import QBrush, QFontMetrics
+from PySide6.QtWidgets import QHeaderView
 
 from utils.data_loader import load_df
 
@@ -202,14 +203,6 @@ class TableViewPage(QWidget):
         title_lbl = QLabel("<h2>Table View</h2>")
         layout.addWidget(title_lbl)
 
-        # Top control row with reload button
-        ctl_row = QHBoxLayout()
-        reload_btn = QPushButton("Reload")
-        reload_btn.clicked.connect(self.reload)
-        ctl_row.addWidget(reload_btn)
-        ctl_row.addStretch(1)
-        layout.addLayout(ctl_row)
-
         # Search row (below reload) — search only Item and Notes
         search_row = QHBoxLayout()
         search_row.addWidget(QLabel("Search:"))
@@ -217,8 +210,12 @@ class TableViewPage(QWidget):
         # no placeholder text by user request; start empty
         self.search_input.setPlaceholderText("")
         self.search_input.setToolTip("Type to filter rows where Item or Notes contain the given text (case-insensitive).")
-        self.search_input.textChanged.connect(self.on_search_text_changed)
         search_row.addWidget(self.search_input)
+        # Explicit Search button: user must click to apply the filter
+        self._search_button = QPushButton("Search")
+        self._search_button.setToolTip("Click to apply the search filter")
+        self._search_button.clicked.connect(self._apply_search)
+        search_row.addWidget(self._search_button)
 
         # help tool button with tooltip (small '?')
         help_btn = QToolButton()
@@ -255,8 +252,13 @@ class TableViewPage(QWidget):
         self._df = df
         # reset model
         self.model.setDataFrame(df.reset_index(drop=True))
-        # adjust column widths to user-specified heuristics
-        self.adjust_column_widths(df)
+        # Make columns auto-resize with the available width
+        try:
+            hdr = self.table.horizontalHeader()
+            hdr.setSectionResizeMode(QHeaderView.Stretch)
+            self.table.setHorizontalHeader(hdr)
+        except Exception:
+            pass
 
     def reload(self):
         try:
@@ -267,6 +269,22 @@ class TableViewPage(QWidget):
 
     def on_search_text_changed(self, text: str):
         # Forward the literal substring to the custom proxy (filters Item and Notes)
+        if hasattr(self.proxy_model, 'setFilterString'):
+            self.proxy_model.setFilterString(text)
+        else:
+            self.proxy_model.setFilterFixedString(text)
+
+    def _apply_search(self):
+        """Apply the current text in the search input to the proxy filter.
+
+        This is intentionally a button-activated action to avoid filtering on every keystroke.
+        """
+        text = ''
+        try:
+            text = self.search_input.text() if self.search_input is not None else ''
+        except Exception:
+            text = ''
+
         if hasattr(self.proxy_model, 'setFilterString'):
             self.proxy_model.setFilterString(text)
         else:

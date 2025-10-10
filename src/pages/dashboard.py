@@ -18,6 +18,8 @@ from PySide6.QtCore import Qt, QEvent
 import pandas as pd
 from utils.data_loader import load_df
 from utils.plots import monthly_trend_figure, top_items_bar_chart, category_pie_chart, amount_distribution_pie, rolling_average_figure
+from utils.xlsx_handler import remake_xlsx_file
+from PySide6.QtWidgets import QMessageBox
 import logging
 import warnings
 
@@ -65,6 +67,11 @@ class DashboardPage(QWidget):
         # explicit Search button to trigger filtering
         self._search_button = QPushButton('Search')
         controls_row.addWidget(self._search_button)
+        # Remake purchases.xlsx quick action
+        self._remake_btn = QPushButton('Remake purchases.xlsx')
+        self._remake_btn.setToolTip('Backup and reinitialize purchases.xlsx (sorts rows by Date)')
+        self._remake_btn.clicked.connect(self._on_remake_clicked)
+        controls_row.addWidget(self._remake_btn)
         controls_row.addStretch(1)
         outer_layout.addLayout(controls_row)
 
@@ -748,6 +755,24 @@ class DashboardPage(QWidget):
             self._render_monthly_overview(df_sel)
         except Exception:
             pass
+
+    def _on_remake_clicked(self):
+        # Confirmation dialog before running the potentially-destructive action
+        try:
+            resp = QMessageBox.question(self, "Remake purchases.xlsx",
+                                        "This will create a backup and overwrite 'data/purchases.xlsx'. Continue?",
+                                        QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
+            if resp != QMessageBox.Yes:
+                return
+
+            remake_xlsx_file()
+            QMessageBox.information(self, "Remake complete", "purchases.xlsx has been backed up and remade successfully.")
+        except Exception as e:
+            try:
+                QMessageBox.critical(self, "Remake failed", f"Remaking purchases.xlsx failed:\n{e}")
+            except Exception:
+                pass
+            logger.exception('Remake failed')
 
 
     def _render_category_details(self, df_sel: pd.DataFrame):

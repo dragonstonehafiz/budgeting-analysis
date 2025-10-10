@@ -38,8 +38,6 @@ from PySide6.QtGui import QAction
  
 from pages.dashboard import DashboardPage
 from pages.table_view import TableViewPage
-from pages.import_export_settings import ImportExportSettingsPage
-from pages.help_page import HelpPage
 
 
 APP_NAME = "Budgeting Dashboard"
@@ -75,7 +73,7 @@ class MainWindow(QMainWindow):
         self.sidebar.setMaximumWidth(220)
         self.sidebar.setSpacing(6)
         self.sidebar.setFrameShape(QFrame.NoFrame)
-        for name in ["Dashboard", "Table View", "Import/Export/Settings", "Help"]:
+        for name in ["Dashboard", "Table View"]:
             it = QListWidgetItem(name)
             it.setSizeHint(QSize(200, 42))
             self.sidebar.addItem(it)
@@ -118,13 +116,10 @@ class MainWindow(QMainWindow):
         # Table view page
         table = TableViewPage()
 
-        # Import/Export/Settings page
-        settings = ImportExportSettingsPage()
+        # Import/Export/Settings and Help pages removed per request
+        pages = (dash, table)
 
-        # Help page
-        help_p = HelpPage()
-
-        for w in (dash, table, settings, help_p):
+        for w in pages:
             self.stack.addWidget(w)
 
     def on_nav_changed(self, index: int):
