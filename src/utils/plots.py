@@ -541,7 +541,8 @@ def amount_distribution_pie(
         # fallback: if qcut fails (e.g., not enough unique values), use rank-based bins
         df['quartile'] = pd.cut(df[cost_col].rank(method='first'), bins=4, labels=['Q1 (0-25%)', 'Q2 (25-50%)', 'Q3 (50-75%)', 'Q4 (75-100%)'])
 
-    grouped = df.groupby('quartile')[cost_col].agg(total_spend='sum', tx_count='count')
+    # Explicitly pass observed=False to retain current behavior and avoid a FutureWarning
+    grouped = df.groupby('quartile', observed=False)[cost_col].agg(total_spend='sum', tx_count='count')
     # ensure quartile order
     ordered_labels = ['Q1 (0-25%)', 'Q2 (25-50%)', 'Q3 (50-75%)', 'Q4 (75-100%)']
     grouped = grouped.reindex(ordered_labels).fillna(0.0)
@@ -653,6 +654,7 @@ def top_items_bar_chart(
     values_flat = []
     categories_flat = []
     items_flat = []  # keep item name per segment for hover
+    notes_flat = []  # keep Notes per segment for hover
 
     for idx, segs in enumerate(segments_per_item):
         y = y_pos[idx]
@@ -681,6 +683,12 @@ def top_items_bar_chart(
                     values_flat.append(float(seg_val))
                     categories_flat.append(str(cat_val))
                     items_flat.append(items[idx])
+                    # attempt to extract Notes for this transaction row
+                    try:
+                        note_val = sub.iloc[s_i].get('Notes', '')
+                    except Exception:
+                        note_val = sub['Notes'].iloc[s_i] if ('Notes' in sub.columns and len(sub) > s_i) else ''
+                    notes_flat.append('' if note_val is None else str(note_val))
                 left += float(seg_val)
             except Exception:
                 left += 0.0
@@ -710,7 +718,14 @@ def top_items_bar_chart(
 
     # Provide hover data: combine item and category for clarity
     try:
-        hover_labels = [f"{it} — {cat}" for it, cat in zip(items_flat, categories_flat)]
+        # Build hover labels including Notes when available
+        hover_labels = []
+        for it, cat, note in zip(items_flat, categories_flat, notes_flat):
+            base = f"{it} — {cat}"
+            if note and str(note).strip():
+                # include notes separated by an em-dash for readability
+                base = f"{base} — {note}"
+            hover_labels.append(base)
         canvas.set_bar_data(hover_labels, values_flat, ax, bars_flat, value_formatter=lambda x: f"${x:,.2f}")
     except Exception:
         # fallback: provide totals per item so hover still shows useful info
@@ -806,6 +821,76 @@ def category_pie_chart(
         pass
 
     # Hook up hover data
+    try:
+        canvas.set_pie_data(labels, values, ax, wedges, value_formatter=lambda x: f"${x:,.2f}")
+    except Exception:
+        pass
+
+    fig.tight_layout()
+    return canvas
+
+
+def monthly_pie_chart(
+    monthly_series: pd.Series,
+    title: Optional[str] = None,
+):
+    """Create a donut pie chart showing spend by month.
+
+    Accepts a pandas Series whose index are datetimes (first-of-month) and
+    values are numeric totals for that month.
+    """
+    fig = Figure(figsize=(5, 5), dpi=100)
+    fig.patch.set_facecolor('white')
+    canvas = InteractiveCanvas(fig)
+    ax = fig.add_subplot(111)
+
+    if monthly_series is None or len(monthly_series) == 0:
+        ax.text(0.5, 0.5, 'No data available', transform=ax.transAxes,
+                ha='center', va='center', fontsize=12, color='gray')
+        ax.set_title(title or 'Spending by month')
+        fig.tight_layout()
+        return canvas
+
+    # Ensure index are datetimes and sort
+    try:
+        idx = pd.DatetimeIndex(monthly_series.index)
+    except Exception:
+        idx = pd.to_datetime(monthly_series.index, errors='coerce')
+
+    labels = [d.strftime('%b %Y') for d in idx]
+    values = [float(v) for v in monthly_series.values]
+
+    # Build visual labels that include month and formatted amount (keeps hover labels
+    # separate so the interactive tooltip shows the same month text without duplication)
+    def _fmt_amt(x):
+        try:
+            return f"${x:,.2f}"
+        except Exception:
+            return str(x)
+
+    visual_labels = [f"{m}\n{_fmt_amt(v)}" for m, v in zip(labels, values)]
+
+    cmap = plt.get_cmap('tab20')
+    colors = [cmap(i) for i in range(len(labels))]
+
+    wedgeprops = dict(width=0.38, edgecolor='white')
+    # Pass visual_labels to show month + amount on the chart. For many slices this
+    # can become crowded; acceptable fallback is the hover tooltip handled by
+    # InteractiveCanvas.
+    pie_result = ax.pie(values, labels=visual_labels, colors=colors, autopct=None, startangle=90, wedgeprops=wedgeprops)
+    if isinstance(pie_result, (list, tuple)) and len(pie_result) >= 2:
+        wedges = pie_result[0]
+    else:
+        wedges = pie_result
+
+    ax.set_title(title or 'Spending by month', fontsize=13, pad=12)
+
+    try:
+        total_amount = float(sum(values))
+        ax.text(0, 0, f"Total\n${total_amount:,.2f}", ha='center', va='center', fontsize=11, weight='bold')
+    except Exception:
+        pass
+
     try:
         canvas.set_pie_data(labels, values, ax, wedges, value_formatter=lambda x: f"${x:,.2f}")
     except Exception:

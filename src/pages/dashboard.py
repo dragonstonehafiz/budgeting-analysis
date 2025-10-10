@@ -6,6 +6,8 @@ from PySide6.QtWidgets import (
     QFrame,
     QSizePolicy,
     QComboBox,
+    QLineEdit,
+    QPushButton,
     QScrollArea,
     QLayout,
     QTableWidget,
@@ -17,6 +19,7 @@ import pandas as pd
 from utils.data_loader import load_df
 from utils.plots import monthly_trend_figure, top_items_bar_chart, category_pie_chart, amount_distribution_pie, rolling_average_figure
 import logging
+import warnings
 
 logger = logging.getLogger(__name__)
 
@@ -48,6 +51,22 @@ class DashboardPage(QWidget):
 
         header = QLabel("<h1>Dashboard</h1>")
         outer_layout.addWidget(header)
+        # Controls row (year selector + search) placed outside the scroll area so it stays
+        # visible while the rest of the dashboard content scrolls.
+        controls_row = QHBoxLayout()
+        controls_row.addWidget(QLabel("Select year:"))
+        self.year_combo = QComboBox()
+        self.year_combo.addItem("All")
+        controls_row.addWidget(self.year_combo)
+        # search box to filter by Item or Notes (case-insensitive substring)
+        self._search_box = QLineEdit()
+        self._search_box.setPlaceholderText('Search items or notes...')
+        controls_row.addWidget(self._search_box)
+        # explicit Search button to trigger filtering
+        self._search_button = QPushButton('Search')
+        controls_row.addWidget(self._search_button)
+        controls_row.addStretch(1)
+        outer_layout.addLayout(controls_row)
 
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
@@ -63,15 +82,7 @@ class DashboardPage(QWidget):
         yearly_layout.setSpacing(12)
         content_widget.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Minimum)
 
-        # initialize sections (each will attach itself to yearly_layout)
-        # Year selector (kept here so it's visually above the stats panel)
-        controls_row = QHBoxLayout()
-        controls_row.addWidget(QLabel("Select year:"))
-        self.year_combo = QComboBox()
-        self.year_combo.addItem("All")
-        controls_row.addWidget(self.year_combo)
-        controls_row.addStretch(1)
-        yearly_layout.addLayout(controls_row)
+    # initialize sections (each will attach itself to yearly_layout)
 
         # stats panel
         self._init_stats_section(yearly_layout)
@@ -204,27 +215,7 @@ class DashboardPage(QWidget):
         except Exception:
             pass
 
-        # right: top 10 least expensive items
-        right_frame = QFrame()
-        right_layout = QVBoxLayout(right_frame)
-        right_layout.addWidget(QLabel('<b>Top 10 least expensive</b>'))
-        self._bottom5_table = QTableWidget()
-        self._bottom5_table.setColumnCount(5)
-        self._bottom5_table.setHorizontalHeaderLabels(['Item', 'Category', 'Cost', 'Date', 'Notes'])
-        header = self._bottom5_table.horizontalHeader()
-        header.setSectionResizeMode(0, QHeaderView.Stretch)
-        header.setSectionResizeMode(1, QHeaderView.ResizeToContents)
-        header.setSectionResizeMode(2, QHeaderView.ResizeToContents)
-        header.setSectionResizeMode(3, QHeaderView.ResizeToContents)
-        header.setSectionResizeMode(4, QHeaderView.Stretch)
-        right_layout.addWidget(self._bottom5_table)
-        try:
-            self._set_table_height_for_rows(self._bottom5_table, rows=10)
-        except Exception:
-            pass
-
         overall_h.addWidget(left_frame, 1)
-        overall_h.addWidget(right_frame, 1)
 
         # attach the overall_h below the content area; the chart will be inserted at index 0
         self.overall_data_section.content.layout().addLayout(overall_h)
@@ -234,21 +225,25 @@ class DashboardPage(QWidget):
         parent_layout.addWidget(self.monthly_details_section)
         self.monthly_details_section.setVisible(False)
 
-        # left: monthly totals, right: items list for selected month
+        # Create the table (kept for fallback) and the items area
         self._monthly_table = QTableWidget()
         self._monthly_table.setColumnCount(2)
         self._monthly_table.setHorizontalHeaderLabels(["Month", "Total spent"])
         self._monthly_table.horizontalHeader().setStretchLastSection(True)
         self._monthly_table.setAlternatingRowColors(True)
 
-        details_h = QHBoxLayout()
+        # Vertical layout: pie on top, items below
+        details_v = QVBoxLayout()
 
+        # Top area: left_frame will hold the pie (and keep the table if needed)
         left_frame = QFrame()
         left_layout = QVBoxLayout(left_frame)
-        left_frame.setMaximumWidth(240)
-        left_frame.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Preferred)
+        left_frame.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
         left_layout.addWidget(self._monthly_table)
+        # placeholder for monthly pie canvas
+        self._monthly_pie_view = None
 
+        # Bottom area: items list and month selector
         right_frame = QFrame()
         right_layout = QVBoxLayout(right_frame)
         right_layout.addWidget(QLabel('<b>Items bought</b>'))
@@ -277,15 +272,61 @@ class DashboardPage(QWidget):
         self._items_table.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         right_layout.addWidget(self._items_table)
 
-        details_h.addWidget(left_frame, 1)
-        details_h.addWidget(right_frame, 2)
+        details_v.addWidget(left_frame)
+        details_v.addWidget(right_frame)
 
         self._monthly_right_layout = right_layout
-        self.monthly_details_section.content.layout().addLayout(details_h)
+        self.monthly_details_section.content.layout().addLayout(details_v)
 
     def _init_category_section(self, parent_layout: QVBoxLayout):
         self.category_section = self._make_section('Spending by category')
         parent_layout.addWidget(self.category_section)
+        # Add controls and placeholders for category-specific views.
+        # Place the selector as the first row of the section content.
+        content_layout = self.category_section.content.layout()
+        controls = QHBoxLayout()
+        controls.addWidget(QLabel('Category:'))
+        self._category_combo = QComboBox()
+        controls.addWidget(self._category_combo)
+        controls.addStretch(1)
+        # insert controls at top (index 0) so selector remains first row
+        try:
+            content_layout.insertLayout(0, controls)
+        except Exception:
+            content_layout.addLayout(controls)
+
+        # placeholder for category-specific top-items chart
+        self._category_top_items_view = None
+        # table for top 10 most expensive items within the selected category
+        self._category_top_table = QTableWidget()
+        self._category_top_table.setColumnCount(5)
+        self._category_top_table.setHorizontalHeaderLabels(['Item', 'Category', 'Cost', 'Date', 'Notes'])
+        hdr = self._category_top_table.horizontalHeader()
+        try:
+            hdr.setSectionResizeMode(0, QHeaderView.Stretch)
+            hdr.setSectionResizeMode(1, QHeaderView.ResizeToContents)
+            hdr.setSectionResizeMode(2, QHeaderView.ResizeToContents)
+            hdr.setSectionResizeMode(3, QHeaderView.ResizeToContents)
+            hdr.setSectionResizeMode(4, QHeaderView.Stretch)
+        except Exception:
+            pass
+        # make table reasonably sized
+        try:
+            self._set_table_height_for_rows(self._category_top_table, rows=10)
+        except Exception:
+            pass
+        content_layout.addWidget(self._category_top_table)
+
+        # connect handler for category combo changes
+        try:
+            # disconnect may emit a RuntimeWarning in some PySide6 versions if there was
+            # no prior connection; suppress such warnings while attempting to disconnect.
+            with warnings.catch_warnings():
+                warnings.simplefilter('ignore')
+                self._category_combo.currentTextChanged.disconnect()
+        except Exception:
+            pass
+        self._category_combo.currentTextChanged.connect(lambda txt: self._render_category_details(getattr(self, '_data', getattr(self, '_data_raw', None))))
 
     def set_data(self, df=None):
         """Public method to update the dashboard from a DataFrame.
@@ -318,11 +359,22 @@ class DashboardPage(QWidget):
 
         # connect handler (safe to reconnect)
         try:
-            self.year_combo.currentTextChanged.disconnect()
+            with warnings.catch_warnings():
+                warnings.simplefilter('ignore')
+                self.year_combo.currentTextChanged.disconnect()
         except Exception:
             # ignore if not previously connected
             pass
         self.year_combo.currentTextChanged.connect(self._on_year_changed)
+
+        # wire explicit Search button to trigger recompute (user presses when ready)
+        try:
+            with warnings.catch_warnings():
+                warnings.simplefilter('ignore')
+                self._search_button.clicked.disconnect()
+        except Exception:
+            pass
+        self._search_button.clicked.connect(lambda: self._compute_and_update(self.year_combo.currentText()))
 
         # compute metrics for the default/current selection
         self._compute_and_update(self.year_combo.currentText())
@@ -446,6 +498,34 @@ class DashboardPage(QWidget):
             except Exception:
                 df_sel = self._data_raw
 
+        # apply search box filter if present (filter Item or Notes columns)
+        try:
+            search_term = ''
+            try:
+                search_term = self._search_box.text().strip()
+            except Exception:
+                search_term = ''
+
+            if search_term:
+                # defensive: ensure columns exist and cast to str for matching
+                try:
+                    mask_item = df_sel['Item'].astype(str).str.contains(search_term, case=False, na=False) if 'Item' in df_sel.columns else pd.Series(False, index=df_sel.index)
+                except Exception:
+                    mask_item = pd.Series(False, index=df_sel.index)
+                try:
+                    mask_notes = df_sel['Notes'].astype(str).str.contains(search_term, case=False, na=False) if 'Notes' in df_sel.columns else pd.Series(False, index=df_sel.index)
+                except Exception:
+                    mask_notes = pd.Series(False, index=df_sel.index)
+
+                try:
+                    df_sel = df_sel[mask_item | mask_notes]
+                except Exception:
+                    # if indexing fails, leave df_sel unchanged
+                    pass
+        except Exception:
+            # non-fatal: if search filtering fails, ignore and continue
+            pass
+
         # hand off to update function
         self._update_metrics(df_sel)
         # render the monthly overview chart for this selection
@@ -458,18 +538,20 @@ class DashboardPage(QWidget):
         # render monthly details table when a specific year is selected
         try:
             if selection_text and selection_text != 'All':
-                # pass year as int if possible
-                try:
-                    year_int = int(selection_text)
-                except Exception:
-                    year_int = None
-                self._render_monthly_details(df_sel, year=year_int)
+                # df_sel is already filtered to the chosen year in _compute_and_update
+                self._render_monthly_details(df_sel)
             else:
                 # hide details for All
                 try:
                     self.monthly_details_section.setVisible(False)
                 except Exception:
                     pass
+        except Exception:
+            pass
+
+        # update category section (top items + table) with current filtered data
+        try:
+            self._render_category_details(df_sel)
         except Exception:
             pass
 
@@ -640,21 +722,7 @@ class DashboardPage(QWidget):
                 self._top5_table.setItem(r, 3, QTableWidgetItem(date_str))
                 self._top5_table.setItem(r, 4, QTableWidgetItem(str(notes)))
 
-            # top 10 least expensive (exclude zero-cost rows if you prefer)
-            bottom5 = df.sort_values('Cost', ascending=True).head(10)
-            self._bottom5_table.setRowCount(len(bottom5))
-            for r, (_, row) in enumerate(bottom5.iterrows()):
-                item = row.get('Item', '')
-                cat = row.get('Category', '')
-                cost = row.get('Cost', 0.0)
-                notes = row.get('Notes', '')
-                date_val = row.get('Date')
-                date_str = pd.to_datetime(date_val).strftime('%Y-%m-%d') if pd.notna(date_val) else str(date_val)
-                self._bottom5_table.setItem(r, 0, QTableWidgetItem(str(item)))
-                self._bottom5_table.setItem(r, 1, QTableWidgetItem(str(cat)))
-                self._bottom5_table.setItem(r, 2, QTableWidgetItem(f"${float(cost):,.2f}"))
-                self._bottom5_table.setItem(r, 3, QTableWidgetItem(date_str))
-                self._bottom5_table.setItem(r, 4, QTableWidgetItem(str(notes)))
+            # right-side least-expensive table removed per user request
         except Exception as e:
             logger.exception("Failed rendering monthly overview")
             # Show error message if canvas creation failed
@@ -665,7 +733,7 @@ class DashboardPage(QWidget):
             # keep selector as first row; insert error message after it
             self.overall_data_section.content.layout().insertWidget(1, self._monthly_view)
 
-    def _on_overview_chart_changed(self, text: str):
+    def _on_overview_chart_changed(self):
         """Handle chart selector changes by re-rendering the monthly overview.
 
         Uses the current filtered data (self._data) when available, otherwise
@@ -681,13 +749,150 @@ class DashboardPage(QWidget):
         except Exception:
             pass
 
-    def _render_monthly_details(self, df_sel: pd.DataFrame, year: int | None = None):
-        """Populate the monthly details table for a specific year.
 
-        Shows each month (Jan..Dec) and total spent for that month. If `year` is
-        provided, the table will show all 12 months of that year (missing months
-        shown as $0.00). If the selection has no data the details section will
-        be hidden.
+    def _render_category_details(self, df_sel: pd.DataFrame):
+        """Render the category selector, top-items chart for the selected category, and the top-10 table."""
+        try:
+            if df_sel is None:
+                return
+
+            df = df_sel.copy()
+            if 'Category' not in df.columns or 'Cost' not in df.columns:
+                return
+
+            # populate category combo with available categories (preserve 'All')
+            # Populate combo only if choices changed; preserve current selection.
+            try:
+                existing = [self._category_combo.itemText(i) for i in range(self._category_combo.count())]
+            except Exception:
+                existing = []
+
+            try:
+                cats = sorted([str(c) for c in df['Category'].dropna().unique()])
+            except Exception:
+                cats = []
+
+            new_items = cats
+            try:
+                if existing != new_items:
+                    # preserve previous selection if still present
+                    prev = None
+                    try:
+                        prev = self._category_combo.currentText()
+                    except Exception:
+                        prev = None
+
+                    self._category_combo.blockSignals(True)
+                    self._category_combo.clear()
+                    for it in new_items:
+                        self._category_combo.addItem(it)
+                    # restore previous selection if possible, otherwise default to first
+                    if prev and prev in new_items:
+                        idx = new_items.index(prev)
+                        try:
+                            self._category_combo.setCurrentIndex(idx)
+                        except Exception:
+                            pass
+                    else:
+                        try:
+                            if len(new_items) > 0:
+                                self._category_combo.setCurrentIndex(0)
+                        except Exception:
+                            pass
+                    self._category_combo.blockSignals(False)
+            except Exception:
+                pass
+
+            # determine selected category (user selection should be preserved)
+            try:
+                sel = self._category_combo.currentText()
+            except Exception:
+                sel = 'All'
+
+            # filter df to selected category if not 'All'
+            if sel and sel != 'All':
+                try:
+                    df_cat = df[df['Category'].astype(str) == str(sel)].copy()
+                except Exception:
+                    df_cat = df.copy()
+            else:
+                df_cat = df.copy()
+
+            # remove any existing category chart canvas
+            try:
+                if getattr(self, '_category_top_items_view', None) is not None:
+                    try:
+                        # the chart was added to the content layout; remove it safely
+                        parent = self._category_top_items_view.parent()
+                        if parent is not None and hasattr(parent, 'layout'):
+                            try:
+                                parent.layout().removeWidget(self._category_top_items_view)
+                            except Exception:
+                                pass
+                        self._category_top_items_view.deleteLater()
+                    except Exception:
+                        pass
+                    self._category_top_items_view = None
+            except Exception:
+                pass
+
+            # create top-items bar chart for this category
+            try:
+                from utils.plots import top_items_bar_chart
+                chart = top_items_bar_chart(df_cat, top_n=10, title=f"Top items — {sel if sel else 'All'}")
+                chart.setMinimumHeight(240)
+                # insert chart above the top table in the category content area
+                try:
+                    self.category_section.content.layout().insertWidget(1, chart)
+                except Exception:
+                    try:
+                        self.category_section.content.layout().addWidget(chart)
+                    except Exception:
+                        pass
+                self._category_top_items_view = chart
+            except Exception:
+                pass
+
+            # populate top-10 table using df_cat
+            try:
+                df_cat = df_cat.copy()
+                if 'Date' in df_cat.columns and not pd.api.types.is_datetime64_any_dtype(df_cat['Date']):
+                    df_cat['Date'] = pd.to_datetime(df_cat['Date'], errors='coerce')
+                df_cat['Cost'] = pd.to_numeric(df_cat.get('Cost', pd.Series([])), errors='coerce').fillna(0.0)
+
+                top10 = df_cat.sort_values('Cost', ascending=False).head(10)
+                self._category_top_table.setRowCount(len(top10))
+                for r, (_, row) in enumerate(top10.iterrows()):
+                    item = row.get('Item', '')
+                    cat = row.get('Category', '')
+                    cost = row.get('Cost', 0.0)
+                    notes = row.get('Notes', '')
+                    date_val = row.get('Date')
+                    date_str = pd.to_datetime(date_val).strftime('%Y-%m-%d') if pd.notna(date_val) else str(date_val)
+                    self._category_top_table.setItem(r, 0, QTableWidgetItem(str(item)))
+                    self._category_top_table.setItem(r, 1, QTableWidgetItem(str(cat)))
+                    self._category_top_table.setItem(r, 2, QTableWidgetItem(f"${float(cost):,.2f}"))
+                    self._category_top_table.setItem(r, 3, QTableWidgetItem(date_str))
+                    self._category_top_table.setItem(r, 4, QTableWidgetItem(str(notes)))
+            except Exception:
+                try:
+                    self._category_top_table.setRowCount(0)
+                except Exception:
+                    pass
+        except Exception:
+            # do not crash the dashboard; log and continue
+            try:
+                logger.exception('Failed rendering category details')
+            except Exception:
+                pass
+
+    def _render_monthly_details(self, df_sel: pd.DataFrame):
+        """Populate the monthly details table for the provided (already-filtered) DataFrame.
+
+        If `df_sel` corresponds to a single year (all Date values share the same
+        year) this function will display all 12 months for that year (zero-filled
+        months shown as $0.00). Otherwise it shows months present in `df_sel`.
+        If the selection has no data the details section will be hidden.
         """
         try:
             df = df_sel.copy()
@@ -697,14 +902,19 @@ class DashboardPage(QWidget):
             # ensure numeric costs
             df['Cost'] = pd.to_numeric(df.get('Cost', pd.Series([])), errors='coerce').fillna(0.0)
 
-            # if year provided, focus on that year
-            if year is not None:
-                # create full list of first-of-month timestamps for that year
-                try:
-                    months = pd.date_range(start=f"{int(year)}-01-01", periods=12, freq='MS')
-                except Exception:
-                    months = None
-                df = df[df['Date'].dt.year == int(year)]
+            # infer year from df_sel: if all dates share a single year, show full 12 months
+            months = None
+            inferred_year = None
+            try:
+                years_in_data = pd.DatetimeIndex(df['Date'].dropna()).year.unique()
+                if len(years_in_data) == 1:
+                    inferred_year = int(years_in_data[0])
+                    try:
+                        months = pd.date_range(start=f"{inferred_year}-01-01", periods=12, freq='MS')
+                    except Exception:
+                        months = None
+            except Exception:
+                inferred_year = None
 
             # resample monthly
             if not df.empty:
@@ -712,23 +922,20 @@ class DashboardPage(QWidget):
             else:
                 monthly = pd.Series(dtype=float)
 
-            # if year provided, reindex to all months to ensure 12 rows
-            if year is not None and months is not None:
+            # if we inferred a single year, reindex to ensure all 12 months are present
+            if inferred_year is not None and months is not None:
                 monthly = monthly.reindex(months, fill_value=0.0)
 
-            # If no year is selected and there's no data, hide the details section
-            if year is None and monthly.empty:
+            # If there's no data, hide the details section
+            if monthly.empty:
                 try:
                     self.monthly_details_section.setVisible(False)
                 except Exception:
                     pass
                 return
 
-            # populate table rows. When a year is provided, explicitly iterate the
-            # 12-month list so we always show Jan..Dec for that year (zero-filled
-            # months will display $0.00). Otherwise use the months present in the
-            # resampled series.
-            if year is not None and months is not None:
+            # populate table rows. If we inferred a single year, iterate the 12-month list
+            if inferred_year is not None and months is not None:
                 rows = []
                 for dt in months:
                     try:
@@ -742,12 +949,53 @@ class DashboardPage(QWidget):
             else:
                 rows = [(dt.strftime('%b %Y'), f"${val:,.2f}") for dt, val in monthly.items()]
 
-            self._monthly_table.setRowCount(len(rows))
-            for i, (month_label, total_label) in enumerate(rows):
-                self._monthly_table.setItem(i, 0, QTableWidgetItem(month_label))
-                self._monthly_table.setItem(i, 1, QTableWidgetItem(total_label))
+            # Instead of populating the left table, create a month-share pie chart
+            try:
+                # clean up existing pie if present
+                if getattr(self, '_monthly_pie_view', None) is not None:
+                    try:
+                        self._monthly_pie_view.setParent(None)
+                        self._monthly_pie_view.deleteLater()
+                    except Exception:
+                        pass
+                    self._monthly_pie_view = None
 
-            self._monthly_table.resizeColumnsToContents()
+                # build a pandas Series of monthly totals for the pie
+                monthly_series = monthly.copy()
+                # create pie canvas using helper in utils.plots
+                try:
+                    from utils.plots import monthly_pie_chart
+                    pie = monthly_pie_chart(monthly_series, title='Month share')
+                    pie.setMinimumHeight(260)
+                    # hide the textual table and insert pie into the left layout
+                    try:
+                        self._monthly_table.setVisible(False)
+                    except Exception:
+                        pass
+                    # place pie in the same parent layout as the table
+                    parent = self._monthly_table.parent()
+                    if parent is not None and hasattr(parent, 'layout'):
+                        try:
+                            parent.layout().addWidget(pie)
+                            self._monthly_pie_view = pie
+                        except Exception:
+                            # fallback: attach to overall right layout if insertion fails
+                            try:
+                                self._monthly_right_layout.addWidget(pie)
+                                self._monthly_pie_view = pie
+                            except Exception:
+                                pass
+                except Exception:
+                    # if pie creation fails, fall back to table rendering below
+                    pass
+            except Exception:
+                pass
+
+            # ensure columns/widgets are sized
+            try:
+                self._monthly_table.resizeColumnsToContents()
+            except Exception:
+                pass
             try:
                 # ensure it displays all 12 months without scrolling when a year is selected
                 self._set_table_height_for_rows(self._monthly_table, rows=12)
@@ -851,7 +1099,9 @@ class DashboardPage(QWidget):
 
                 # connect handler
                 try:
-                    self._month_combo.currentTextChanged.disconnect()
+                    with warnings.catch_warnings():
+                        warnings.simplefilter('ignore')
+                        self._month_combo.currentTextChanged.disconnect()
                 except Exception:
                     pass
                 self._month_combo.currentTextChanged.connect(_populate_items_for)
