@@ -12,8 +12,9 @@ import matplotlib.dates as mdates
 import numpy as np
 from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
+from utils.category_colors import get_category_color
 
-__all__ = ["monthly_trend_figure", "InteractiveCanvas", "category_pie_chart", "monthly_bar_chart"]
+__all__ = ["monthly_trend_figure", "InteractiveCanvas", "category_pie_chart", "amount_distribution_pie", "monthly_bar_chart", "top_items_bar_chart", "rolling_average_figure"]
 
 
 class InteractiveCanvas(FigureCanvas):
@@ -69,7 +70,9 @@ class InteractiveCanvas(FigureCanvas):
             'values': values,
             'wedges': wedges,
             'total': total,
-            'value_formatter': value_formatter or (lambda x: f"${x:,.2f}")
+            'value_formatter': value_formatter or (lambda x: f"${x:,.2f}"),
+            # optional counts per wedge (list) to include in hover text
+            'counts': None,
         }
         self._create_annotation()
     
@@ -79,11 +82,22 @@ class InteractiveCanvas(FigureCanvas):
             self.annotation.remove()
         
         if self.ax:
-            self.annotation = self.ax.annotate('', xy=(0,0), xytext=(20,20), 
-                                        textcoords="offset points",
-                                        bbox=dict(boxstyle="round", fc="w", alpha=0.9, edgecolor='gray'),
-                                        arrowprops=dict(arrowstyle="->", connectionstyle="arc3,rad=0"),
-                                        visible=False, fontsize=10, zorder=1000)
+            # Anchor the tooltip relative to the axes (axes fraction coords).
+            # We'll position it at y=0 (x-axis) and adjust the text offset so
+            # the tooltip appears just above the axis and stays on-screen.
+            # No arrow: keep a clean label rendered at the x-axis center
+            self.annotation = self.ax.annotate(
+                '',
+                xy=(0.5, 0),
+                xycoords='axes fraction',
+                xytext=(0, 10),
+                textcoords='offset points',
+                bbox=dict(boxstyle='round', fc='w', alpha=0.95, edgecolor='gray'),
+                visible=False,
+                fontsize=10,
+                zorder=1000,
+                ha='center',
+            )
     
     def on_hover(self, event):
         """Show tooltip based on chart type"""
@@ -117,13 +131,24 @@ class InteractiveCanvas(FigureCanvas):
             mouse_date = mdates.num2date(event.xdata)
             date_diffs = [abs((d - mouse_date.replace(tzinfo=None)).total_seconds()) for d in x_data]
             closest_idx = date_diffs.index(min(date_diffs))
-            
+
             # Within 30 days threshold for datetime
             if min(date_diffs) < 30 * 24 * 3600:
                 x_str = x_data[closest_idx].strftime('%b %Y')
                 y_str = f"${y_data[closest_idx]:,.2f}"
-                
-                self.annotation.xy = (mdates.date2num(x_data[closest_idx]), y_data[closest_idx])
+
+                # compute x as fraction of axes so tooltip stays anchored to x-axis
+                try:
+                    x_val = mdates.date2num(x_data[closest_idx])
+                    xmin, xmax = self.ax.get_xlim()
+                    denom = xmax - xmin if xmax != xmin else 1
+                    x_frac = (x_val - xmin) / denom
+                    x_frac = max(0.0, min(1.0, x_frac))
+                except Exception:
+                    x_frac = 0.5
+
+                self.annotation.xy = (x_frac, 0)
+                # show month label and formatted amount at center for readability
                 self.annotation.set_text(f"{x_str}: {y_str}")
                 self.annotation.set_visible(True)
                 self.draw_idle()
@@ -141,8 +166,17 @@ class InteractiveCanvas(FigureCanvas):
             if min(x_diffs) <= threshold:
                 x_str = x_formatter(x_data[closest_idx])
                 y_str = f"${y_data[closest_idx]:,.2f}"
-                
-                self.annotation.xy = (x_data[closest_idx], y_data[closest_idx])
+
+                try:
+                    xmin, xmax = min(x_data), max(x_data)
+                    denom = xmax - xmin if xmax != xmin else 1
+                    x_frac = (x_data[closest_idx] - xmin) / denom
+                    x_frac = max(0.0, min(1.0, x_frac))
+                except Exception:
+                    x_frac = 0.5
+
+                self.annotation.xy = (x_frac, 0)
+                # show x label and formatted amount at center for readability
                 self.annotation.set_text(f"{x_str}: {y_str}")
                 self.annotation.set_visible(True)
                 self.draw_idle()
@@ -160,13 +194,14 @@ class InteractiveCanvas(FigureCanvas):
             if bar.contains(event)[0]:  # Mouse is over this bar
                 category = categories[i]
                 value = values[i]
-                
-                # Position tooltip at top of bar
-                x = bar.get_x() + bar.get_width() / 2
-                y = bar.get_height()
-                
-                self.annotation.xy = (x, y)
-                self.annotation.set_text(f"{category}: {value_formatter(value)}")
+                # anchor at the x-axis (axes fraction y=0)
+                self.annotation.xy = (0.5, -0.2)
+                # show label and amount at center for readability
+                try:
+                    amt_text = value_formatter(value)
+                except Exception:
+                    amt_text = str(value)
+                self.annotation.set_text(f"{category}: {amt_text}")
                 self.annotation.set_visible(True)
                 self.draw_idle()
                 return
@@ -180,21 +215,21 @@ class InteractiveCanvas(FigureCanvas):
         values = self.chart_data['values']
         total = self.chart_data['total']
         value_formatter = self.chart_data['value_formatter']
+        counts = self.chart_data.get('counts')
         
         for i, wedge in enumerate(wedges):
             if wedge.contains(event)[0]:  # Mouse is over this wedge
                 label = labels[i]
                 value = values[i]
                 percentage = (value / total) * 100 if total > 0 else 0
-                
-                # Position tooltip at wedge center
-                theta = (wedge.theta1 + wedge.theta2) / 2
-                r = wedge.r * 0.7  # Position at 70% of radius
-                x = r * np.cos(np.radians(theta))
-                y = r * np.sin(np.radians(theta))
-                
-                self.annotation.xy = (x, y)
-                self.annotation.set_text(f"{label}: {value_formatter(value)} ({percentage:.1f}%)")
+
+                # keep tooltip at center x-axis and show label, amount, and percent
+                self.annotation.xy = (0.5, 0)
+                try:
+                    amt_text = value_formatter(value)
+                except Exception:
+                    amt_text = str(value)
+                self.annotation.set_text(f"{label}: {amt_text} ({percentage:.1f}%)")
                 self.annotation.set_visible(True)
                 self.draw_idle()
                 return
@@ -342,5 +377,439 @@ def monthly_trend_figure(
     if len(dates) > 6:
         plt.setp(ax.xaxis.get_majorticklabels(), rotation=45)
     
+    fig.tight_layout()
+    return canvas
+
+
+def rolling_average_figure(
+    df: pd.DataFrame,
+    date_col: str = "Date",
+    cost_col: str = "Cost",
+    window: int = 3,
+    title: Optional[str] = None,
+):
+    """Create a monthly series with a rolling average and volatility band.
+
+    Args:
+        df: DataFrame with date and cost columns.
+        date_col: column name for dates.
+        cost_col: column name for numeric costs.
+        window: rolling window in months (integer).
+        title: optional chart title.
+
+    Returns:
+        InteractiveCanvas widget with the plot.
+    """
+
+    fig = Figure(figsize=(10, 4), dpi=100)
+    fig.patch.set_facecolor('white')
+    canvas = InteractiveCanvas(fig)
+    ax = fig.add_subplot(111)
+
+    if df is None or df.empty:
+        ax.text(0.5, 0.5, 'No data available', transform=ax.transAxes,
+                ha='center', va='center', fontsize=12, color='gray')
+        ax.set_title(title or f'Rolling {window}-month average')
+        fig.tight_layout()
+        return canvas
+
+    df = df.copy()
+    if date_col not in df.columns or cost_col not in df.columns:
+        ax.text(0.5, 0.5, f'Missing {date_col} or {cost_col}', transform=ax.transAxes,
+                ha='center', va='center', fontsize=12, color='red')
+        fig.tight_layout()
+        return canvas
+
+    df[date_col] = pd.to_datetime(df[date_col], errors='coerce')
+    df = df.dropna(subset=[date_col])
+    if df.empty:
+        ax.text(0.5, 0.5, 'No valid dates', transform=ax.transAxes,
+                ha='center', va='center', fontsize=12, color='gray')
+        fig.tight_layout()
+        return canvas
+
+    df[cost_col] = pd.to_numeric(df[cost_col], errors='coerce').fillna(0.0)
+
+    monthly = df.set_index(date_col)[cost_col].resample('MS').sum()
+    if monthly.empty:
+        ax.text(0.5, 0.5, 'No data to plot', transform=ax.transAxes,
+                ha='center', va='center', fontsize=12, color='gray')
+        fig.tight_layout()
+        return canvas
+
+    # compute rolling mean and std (centered=False to be causal)
+    roll_mean = monthly.rolling(window=window, min_periods=1).mean()
+    roll_std = monthly.rolling(window=window, min_periods=1).std().fillna(0.0)
+
+    dates = monthly.index.to_pydatetime()
+    values = monthly.values
+
+    # plot raw monthly points (light) and rolling mean
+    ax.plot(dates, values, 'o', color='#9E9E9E', markersize=4, alpha=0.7)
+    mean_line, = ax.plot(dates, roll_mean.values, '-', color='#1976D2', linewidth=2)
+
+    # volatility band
+    try:
+        upper = roll_mean + roll_std
+        lower = roll_mean - roll_std
+        ax.fill_between(dates, lower.values, upper.values, color='#1976D2', alpha=0.12)
+    except Exception:
+        pass
+
+    ax.set_title(title or f'{window}-month rolling average', fontsize=14, pad=12)
+    ax.set_xlabel('Month')
+    ax.set_ylabel('Amount ($)')
+    ax.grid(True, alpha=0.3)
+
+    # format x-axis: use horizontal, smaller labels for readability
+    ax.xaxis.set_major_formatter(mdates.DateFormatter('%b %Y'))
+    ax.xaxis.set_major_locator(mdates.MonthLocator(interval=max(1, len(dates)//8)))
+    # choose fontsize based on number of ticks to avoid overlap
+    try:
+        tick_count = len(dates)
+        label_fontsize = 9 if tick_count <= 12 else 8
+        plt.setp(ax.xaxis.get_majorticklabels(), rotation=0, fontsize=label_fontsize)
+    except Exception:
+        # fallback: leave defaults
+        pass
+
+    # hover uses the rolling mean values as the primary label
+    try:
+        canvas.set_line_data(dates, roll_mean.values.tolist(), ax, mean_line, x_formatter=lambda d: d.strftime('%b %Y'))
+    except Exception:
+        try:
+            canvas.set_line_data(dates, roll_mean.values.tolist(), ax, mean_line)
+        except Exception:
+            pass
+
+    # Add an explanatory caption at the bottom-center describing the rolling window
+    try:
+        caption = f"Blue line = {window}-month rolling average (smoothed monthly spend). Shaded band = typical month-to-month variability around the average."
+        # place just below the x-axis inside the figure using axes-fraction coords
+        ax.text(0.5, -0.12, caption, transform=ax.transAxes, ha='center', va='top', fontsize=9, color='gray')
+    except Exception:
+        # non-fatal: if caption placement fails, continue without it
+        pass
+
+    fig.tight_layout()
+    return canvas
+
+
+def amount_distribution_pie(
+    df: pd.DataFrame,
+    cost_col: str = "Cost",
+    title: Optional[str] = None,
+):
+    """Create a donut chart showing distribution of spend by transaction-size quartiles.
+
+    - Uses quartiles (0-25%, 25-50%, 50-75%, 75-100%) based on transaction amounts.
+    - Slice sizes represent total spend contributed by transactions in that quartile.
+    - Hover shows: quartile label, total spend, and number of transactions.
+    """
+    fig = Figure(figsize=(6, 6), dpi=100)
+    fig.patch.set_facecolor('white')
+    canvas = InteractiveCanvas(fig)
+    ax = fig.add_subplot(111)
+
+    if df is None or df.empty:
+        ax.text(0.5, 0.5, 'No data available', transform=ax.transAxes,
+                ha='center', va='center', fontsize=12, color='gray')
+        ax.set_title(title or 'Spend by transaction quartile')
+        fig.tight_layout()
+        return canvas
+
+    df = df.copy()
+    if cost_col not in df.columns:
+        ax.text(0.5, 0.5, f'Missing {cost_col}', transform=ax.transAxes,
+                ha='center', va='center', fontsize=12, color='red')
+        fig.tight_layout()
+        return canvas
+
+    # prepare amounts, exclude NaNs
+    df[cost_col] = pd.to_numeric(df[cost_col], errors='coerce')
+    df = df.dropna(subset=[cost_col])
+    if df.empty:
+        ax.text(0.5, 0.5, 'No valid amounts', transform=ax.transAxes,
+                ha='center', va='center', fontsize=12, color='gray')
+        fig.tight_layout()
+        return canvas
+
+    # define quartile bins using qcut; duplicates='drop' handles flat distributions
+    try:
+        df['quartile'] = pd.qcut(df[cost_col], q=4, labels=['Q1 (0-25%)', 'Q2 (25-50%)', 'Q3 (50-75%)', 'Q4 (75-100%)'], duplicates='drop')
+    except Exception:
+        # fallback: if qcut fails (e.g., not enough unique values), use rank-based bins
+        df['quartile'] = pd.cut(df[cost_col].rank(method='first'), bins=4, labels=['Q1 (0-25%)', 'Q2 (25-50%)', 'Q3 (50-75%)', 'Q4 (75-100%)'])
+
+    grouped = df.groupby('quartile')[cost_col].agg(total_spend='sum', tx_count='count')
+    # ensure quartile order
+    ordered_labels = ['Q1 (0-25%)', 'Q2 (25-50%)', 'Q3 (50-75%)', 'Q4 (75-100%)']
+    grouped = grouped.reindex(ordered_labels).fillna(0.0)
+
+    labels = []
+    values = []
+    counts = []
+    for lbl in ordered_labels:
+        labels.append(lbl)
+        values.append(float(grouped.loc[lbl, 'total_spend']))
+        counts.append(int(grouped.loc[lbl, 'tx_count']))
+
+    # colors: reuse category color map cyclically for visibility
+    cmap = plt.get_cmap('tab20')
+    colors = [cmap(i) for i in range(len(labels))]
+
+    wedgeprops = dict(width=0.38, edgecolor='white')
+    pie_result = ax.pie(values, labels=None, colors=colors, autopct=None, startangle=90, wedgeprops=wedgeprops)
+    if isinstance(pie_result, (list, tuple)) and len(pie_result) >= 2:
+        wedges = pie_result[0]
+    else:
+        wedges = pie_result
+
+    ax.set_title(title or 'Spend by transaction quartile', fontsize=13, pad=12)
+
+    # center total
+    try:
+        total_amount = float(sum(values))
+        ax.text(0, 0, f"Total\n${total_amount:,.2f}", ha='center', va='center', fontsize=11, weight='bold')
+    except Exception:
+        pass
+
+    # Hook up hover data including counts
+    try:
+        canvas.set_pie_data(labels, values, ax, wedges, value_formatter=lambda x: f"${x:,.2f}")
+        # attach counts into chart_data for richer tooltip
+        canvas.chart_data['counts'] = counts
+    except Exception:
+        pass
+
+    fig.tight_layout()
+    return canvas
+
+
+def top_items_bar_chart(
+    df: pd.DataFrame,
+    item_col: str = "Item",
+    cost_col: str = "Cost",
+    top_n: int = 10,
+    title: Optional[str] = None,
+):
+    """Create a horizontal bar chart showing top items by total spend.
+
+    Groups rows by `item_col`, sums `cost_col`, sorts descending and plots the
+    top_n items. Each bar is annotated at the end with the formatted total amount.
+
+    Returns an InteractiveCanvas ready to add to Qt layouts.
+    """
+    fig = Figure(figsize=(10, 4), dpi=100)
+    fig.patch.set_facecolor('white')
+    canvas = InteractiveCanvas(fig)
+    ax = fig.add_subplot(111)
+
+    if df is None or df.empty:
+        ax.text(0.5, 0.5, 'No data available', transform=ax.transAxes,
+                ha='center', va='center', fontsize=12, color='gray')
+        ax.set_title(title or 'Top items')
+        fig.tight_layout()
+        return canvas
+
+    # Prepare data and validate
+    df = df.copy()
+    if item_col not in df.columns or cost_col not in df.columns:
+        ax.text(0.5, 0.5, f'Missing {item_col} or {cost_col}', transform=ax.transAxes,
+                ha='center', va='center', fontsize=12, color='red')
+        fig.tight_layout()
+        return canvas
+
+    df[cost_col] = pd.to_numeric(df[cost_col], errors='coerce').fillna(0.0)
+
+    # compute totals and pick top items by total spend
+    totals = df.groupby(item_col, dropna=False)[cost_col].sum().sort_values(ascending=False)
+    if totals.empty:
+        ax.text(0.5, 0.5, 'No spend found', transform=ax.transAxes,
+                ha='center', va='center', fontsize=12, color='gray')
+        fig.tight_layout()
+        return canvas
+
+    top_items = totals.head(top_n).index.astype(str).tolist()
+
+    # For each top item, get the individual transaction amounts (preserve original order)
+    segments_per_item = []
+    for it in top_items:
+        sub = df[df[item_col].astype(str) == str(it)]
+        # use the raw numeric costs as segments
+        segs = sub[cost_col].tolist()
+        # if no segments (shouldn't happen), add a zero placeholder
+        if len(segs) == 0:
+            segs = [0.0]
+        segments_per_item.append(segs)
+
+    # plotting: stacked horizontal bars. Largest item at top to match expected visual
+    items = top_items
+    n = len(items)
+    y_pos = np.arange(n)
+
+    # single color for all segments; draw white edges to visually separate segments
+    bars_flat = []
+    values_flat = []
+    categories_flat = []
+    items_flat = []  # keep item name per segment for hover
+
+    for idx, segs in enumerate(segments_per_item):
+        y = y_pos[idx]
+        left = 0.0
+        # iterate segments and plot each as a stacked piece
+        for s_i, seg_val in enumerate(segs):
+            try:
+                # determine category for this transaction row (use df rows ordering)
+                # attempt to find the original row corresponding to this segment
+                # Note: segments were extracted from sub = df[df[item_col].astype(str) == str(it)] in order
+                # so we can index into that sub DataFrame to get the category
+                sub = df[df[item_col].astype(str) == str(items[idx])]
+                try:
+                    cat_val = sub.iloc[s_i].get('Category', 'Miscellaneous')
+                except Exception:
+                    cat_val = sub['Category'].iloc[0] if len(sub) > 0 and 'Category' in sub.columns else 'Miscellaneous'
+
+                seg_color = get_category_color(cat_val)
+
+                rect = ax.barh(y, seg_val, left=left, height=0.6,
+                               color=seg_color, edgecolor='white', linewidth=0.8)
+                # rect is a BarContainer; get the rectangle patch
+                patch = rect[0] if len(rect) > 0 else None
+                if patch is not None:
+                    bars_flat.append(patch)
+                    values_flat.append(float(seg_val))
+                    categories_flat.append(str(cat_val))
+                    items_flat.append(items[idx])
+                left += float(seg_val)
+            except Exception:
+                left += 0.0
+
+        # annotate total at the right end of the stacked bar
+        try:
+            total_val = float(sum(segs))
+            ax.annotate(f"${total_val:,.2f}", xy=(left, y), xytext=(4, 0),
+                        textcoords='offset points', ha='left', va='center', fontsize=9)
+        except Exception:
+            pass
+
+    ax.set_yticks(y_pos)
+    ax.set_yticklabels(items, fontsize=10)
+    # invert y-axis so the first (largest) item appears at the top
+    try:
+        ax.invert_yaxis()
+    except Exception:
+        pass
+    ax.set_xlabel('Cost ($)')
+
+    # styling
+    ax.spines['top'].set_visible(False)
+    ax.spines['right'].set_visible(False)
+    ax.grid(axis='x', alpha=0.25)
+    ax.set_title(title or f"Top {len(items)} items by spend", fontsize=13, pad=12)
+
+    # Provide hover data: combine item and category for clarity
+    try:
+        hover_labels = [f"{it} — {cat}" for it, cat in zip(items_flat, categories_flat)]
+        canvas.set_bar_data(hover_labels, values_flat, ax, bars_flat, value_formatter=lambda x: f"${x:,.2f}")
+    except Exception:
+        # fallback: provide totals per item so hover still shows useful info
+        try:
+            canvas.set_bar_data(items[::-1], [totals[it] for it in items[::-1]], ax, [], value_formatter=lambda x: f"${x:,.2f}")
+        except Exception:
+            pass
+
+    fig.tight_layout()
+    return canvas
+
+
+def category_pie_chart(
+    df: pd.DataFrame,
+    category_col: str = "Category",
+    cost_col: str = "Cost",
+    title: Optional[str] = None,
+    top_n: Optional[int] = 10,
+):
+    """Create a pie chart showing percent of expenditure by category.
+
+    Args:
+        df: DataFrame containing at least `category_col` and `cost_col`.
+        category_col: name of the category column.
+        cost_col: name of the numeric cost column.
+        title: optional chart title.
+        top_n: if provided, show only the top_n categories and aggregate the rest into 'Other'.
+
+    Returns:
+        InteractiveCanvas widget ready for Qt layout.
+    """
+    fig = Figure(figsize=(6, 6), dpi=100)
+    fig.patch.set_facecolor('white')
+    canvas = InteractiveCanvas(fig)
+    ax = fig.add_subplot(111)
+
+    if df is None or df.empty:
+        ax.text(0.5, 0.5, 'No data available', transform=ax.transAxes,
+                ha='center', va='center', fontsize=12, color='gray')
+        ax.set_title(title or 'Spending by category')
+        fig.tight_layout()
+        return canvas
+
+    df = df.copy()
+    if category_col not in df.columns or cost_col not in df.columns:
+        ax.text(0.5, 0.5, f'Missing {category_col} or {cost_col}', transform=ax.transAxes,
+                ha='center', va='center', fontsize=12, color='red')
+        fig.tight_layout()
+        return canvas
+
+    df[cost_col] = pd.to_numeric(df[cost_col], errors='coerce').fillna(0.0)
+
+    totals = df.groupby(category_col)[cost_col].sum().sort_values(ascending=False)
+    if totals.empty or totals.sum() == 0:
+        ax.text(0.5, 0.5, 'No spend found', transform=ax.transAxes,
+                ha='center', va='center', fontsize=12, color='gray')
+        fig.tight_layout()
+        return canvas
+
+    # Optionally aggregate small categories into 'Other'
+    if top_n is not None and top_n > 0 and len(totals) > top_n:
+        top = totals.head(top_n)
+        other_sum = totals.iloc[top_n:].sum()
+        labels = list(top.index.astype(str)) + ['Other']
+        values = list(top.values) + [float(other_sum)]
+    else:
+        labels = list(totals.index.astype(str))
+        values = list(totals.values)
+
+    # Colors for each label using the category color map; 'Other' uses Miscellaneous
+    colors = [get_category_color(lbl) if lbl != 'Other' else get_category_color('Miscellaneous') for lbl in labels]
+
+    # Draw a donut by setting a wedge width (supported in modern matplotlib)
+    wedgeprops = dict(width=0.38, edgecolor='white')
+    pie_result = ax.pie(values, labels=None, colors=colors, autopct=None, startangle=90, wedgeprops=wedgeprops)
+    # pie_result may be (wedges, texts) or (wedges, texts, autotexts)
+    if isinstance(pie_result, (list, tuple)) and len(pie_result) >= 2:
+        wedges = pie_result[0]
+        texts = pie_result[1]
+        autotexts = pie_result[2] if len(pie_result) > 2 else []
+    else:
+        wedges = pie_result
+        texts = []
+        autotexts = []
+
+    ax.set_title(title or 'Spending by category', fontsize=13, pad=12)
+
+    # Center total amount text
+    try:
+        total_amount = float(sum(values))
+        ax.text(0, 0, f"Total\n${total_amount:,.2f}", ha='center', va='center', fontsize=11, weight='bold')
+    except Exception:
+        pass
+
+    # Hook up hover data
+    try:
+        canvas.set_pie_data(labels, values, ax, wedges, value_formatter=lambda x: f"${x:,.2f}")
+    except Exception:
+        pass
+
     fig.tight_layout()
     return canvas

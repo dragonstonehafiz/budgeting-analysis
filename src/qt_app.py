@@ -52,7 +52,13 @@ class MainWindow(QMainWindow):
     def __init__(self, data_dir: Path | None = None):
         super().__init__()
         self.setWindowTitle(APP_NAME)
-        self.resize(1000, 700)
+        # default to 720p window size
+        self.resize(1280, 720)
+        try:
+            # also set a sensible minimum size
+            self.setMinimumSize(1024, 600)
+        except Exception:
+            pass
 
         self.data_dir = data_dir or (Path(__file__).parent.parent / "data")
 
