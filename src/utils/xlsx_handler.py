@@ -1,7 +1,6 @@
 import calendar
 import datetime
 import openpyxl
-from tqdm import tqdm
 try:
     from xlsx_formats import *
 except ModuleNotFoundError:
@@ -11,8 +10,8 @@ from openpyxl.worksheet.datavalidation import DataValidation
 from openpyxl.worksheet.worksheet import Worksheet
 from openpyxl.cell.cell import Cell
 from openpyxl.formatting.rule import FormulaRule
-from openpyxl.utils import column_index_from_string
 from openpyxl.utils import get_column_letter
+import traceback
 import os
 
 def remake_xlsx_file(xlsx_path: str = "data/purchases.xlsx") -> None:
@@ -28,20 +27,59 @@ def remake_xlsx_file(xlsx_path: str = "data/purchases.xlsx") -> None:
     The function is defensive but will raise exceptions for missing files so callers
     can handle errors as needed.
     """
-    if not os.path.exists(xlsx_path):
-        raise FileNotFoundError(f"Workbook not found: {xlsx_path}")
+    
+    try:
+        # Basic validation and debugging info
+        abs_path = os.path.abspath(xlsx_path)
+        
+        if not os.path.exists(xlsx_path):
+            raise FileNotFoundError(f"Workbook not found: {xlsx_path} (absolute: {abs_path})")
 
-    wb = openpyxl.load_workbook(xlsx_path)
+        # Test if openpyxl works at all in this environment
+        try:
+            test_wb = openpyxl.Workbook()
+            test_ws = test_wb.active
+            test_ws['A1'] = 'test'
+        except Exception as test_e:
+            raise RuntimeError(f"openpyxl basic functionality test failed: {type(test_e).__name__}: {test_e}\nTraceback: {traceback.format_exc()}")
+        
+        # Load the actual workbook
+        wb = openpyxl.load_workbook(xlsx_path)
+        
+        if wb is None:
+            raise ValueError(f"openpyxl.load_workbook returned None for file: {abs_path}")
+            
+    except Exception as e:
+        error_context = f"""
+            Environment Info:
+            - Path: {xlsx_path}
+            - Absolute path: {os.path.abspath(xlsx_path) if os.path else 'N/A'}
+            - File exists: {os.path.exists(xlsx_path) if os.path else 'N/A'}
+            - Current working directory: {os.getcwd() if os else 'N/A'}
+            - openpyxl version: {getattr(openpyxl, '__version__', 'unknown')}
+            - Error type: {type(e).__name__}
+            - Error message: {str(e)}
+
+            Full traceback:
+            {traceback.format_exc()}"""
+        raise RuntimeError(f"Failed to load workbook: {error_context}") from e
 
     # Backup
-    now = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-    folder = os.path.dirname(xlsx_path) or "."
-    base = os.path.basename(xlsx_path)
-    backup_name = f"{os.path.splitext(base)[0]}_backup_{now}.xlsx"
-    backup_path = os.path.join(folder, backup_name)
-    wb.save(backup_path)
+    try:
+        now = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+        folder = os.path.dirname(xlsx_path) or "."
+        base = os.path.basename(xlsx_path)
+        backup_name = f"{os.path.splitext(base)[0]}_backup_{now}.xlsx"
+        backup_path = os.path.join(folder, backup_name)
+        
+        wb.save(backup_path)
+    except Exception as e:
+        raise RuntimeError(f"Failed to create backup at '{backup_path}': {type(e).__name__}: {e}\nTraceback: {traceback.format_exc()}") from e
 
-    ws: Worksheet = wb.worksheets[0]
+    try:
+        ws = wb.worksheets[0]
+    except Exception as e:
+        raise RuntimeError(f"Failed to get worksheet: {type(e).__name__}: {e}\nTraceback: {traceback.format_exc()}") from e
 
     # Determine header row (assume row 1) and map headers to columns
     headers = {}
@@ -144,7 +182,7 @@ def remake_xlsx_file(xlsx_path: str = "data/purchases.xlsx") -> None:
             letter = get_column_letter(idx)
             ws[f"{letter}{write_row}"] = val
         write_row += 1
-
+        
     # Reset autofilter across A:H
     try:
         ws.auto_filter.ref = "A1:H1"
@@ -158,8 +196,13 @@ def remake_xlsx_file(xlsx_path: str = "data/purchases.xlsx") -> None:
     # Apply row formatting based on our cols mapping
     xlsx_format_rows(ws, cols)
 
-    # Save workbook
-    wb.save(xlsx_path)
+    # Save workbook with error handling
+    try:
+        if wb is None:
+            raise ValueError("Workbook is None before save operation")
+        wb.save(xlsx_path)
+    except Exception as e:
+        raise RuntimeError(f"Failed to save workbook to '{xlsx_path}': {type(e).__name__}: {e}\nTraceback: {traceback.format_exc()}") from e
 
 def xlsx_init_column(ws: Worksheet, col_letter: str, text: str, width: float):
     # Create Header Object
@@ -179,7 +222,7 @@ def xlsx_format_rows(ws: Worksheet, cols: dict):
     date_col = cols.get("Date")[0]
     category_col = cols.get("Category")[0]
     
-    for row in tqdm(range(2, ws.max_row + 150)):
+    for row in range(2, ws.max_row + 150):
         # We're tracking if there is an entry in this part so we can continue adding formatting if there is no data
         item_cell = ws[f"{item_col}{row}"]
         is_empty = item_cell.value is None
@@ -188,10 +231,19 @@ def xlsx_format_rows(ws: Worksheet, cols: dict):
         if not is_empty:
             date_cell: Cell = ws[f"{date_col}{row}"]
             date_value: datetime = date_cell.value
-            month = date_value.month
-            year = date_value.year
-            fill = FILL_WHITE if month % 2 == 0 else FILL_GREY
             
+            # Handle case where item exists but date is None/empty
+            if date_value is not None:
+                try:
+                    month = date_value.month
+                    year = date_value.year
+                    fill = FILL_WHITE if month % 2 == 0 else FILL_GREY
+                except AttributeError:
+                    # date_value is not a datetime object
+                    fill = FILL_WHITE
+            else:
+                # date_value is None
+                fill = FILL_WHITE
         else:
             fill = FILL_WHITE
         

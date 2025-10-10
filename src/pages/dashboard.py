@@ -22,6 +22,7 @@ from utils.xlsx_handler import remake_xlsx_file
 from PySide6.QtWidgets import QMessageBox
 import logging
 import warnings
+import traceback
 
 logger = logging.getLogger(__name__)
 
@@ -765,11 +766,27 @@ class DashboardPage(QWidget):
             if resp != QMessageBox.Yes:
                 return
 
-            remake_xlsx_file()
+            # Get the app's data directory from the main window
+            try:
+                main_window = self.window()
+                if hasattr(main_window, 'data_dir'):
+                    purchases_path = str(main_window.data_dir / "purchases.xlsx")
+                else:
+                    # fallback to relative path
+                    purchases_path = "data/purchases.xlsx"
+            except Exception:
+                purchases_path = "data/purchases.xlsx"
+            remake_xlsx_file(purchases_path)
             QMessageBox.information(self, "Remake complete", "purchases.xlsx has been backed up and remade successfully.")
         except Exception as e:
+            error_type = type(e).__name__
+            error_msg = str(e)
+            full_traceback = traceback.format_exc()
+            
+            detailed_error = f"Error Type: {error_type}\n\nError Message:\n{error_msg}\n\nFull Traceback:\n{full_traceback}"
+            
             try:
-                QMessageBox.critical(self, "Remake failed", f"Remaking purchases.xlsx failed:\n{e}")
+                QMessageBox.critical(self, "Remake failed", f"Remaking purchases.xlsx failed:\n\n{detailed_error}")
             except Exception:
                 pass
             logger.exception('Remake failed')

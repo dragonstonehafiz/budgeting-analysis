@@ -38,6 +38,7 @@ from PySide6.QtGui import QAction
  
 from pages.dashboard import DashboardPage
 from pages.table_view import TableViewPage
+from utils.path_helpers import get_data_folder
 
 
 APP_NAME = "Budgeting Dashboard"
@@ -58,7 +59,8 @@ class MainWindow(QMainWindow):
         except Exception:
             pass
 
-        self.data_dir = data_dir or (Path(__file__).parent.parent / "data")
+        # compute data folder dynamically so packaged exe can use a sibling 'data' folder
+        self.data_dir = data_dir or get_data_folder()
 
         # Menu
         self._create_menu()
