@@ -14,7 +14,7 @@ from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
 from utils.category_colors import get_category_color
 
-__all__ = ["monthly_trend_figure", "InteractiveCanvas", "category_pie_chart", "amount_distribution_pie", "monthly_bar_chart", "top_items_bar_chart", "rolling_average_figure"]
+__all__ = ["monthly_trend_figure", "InteractiveCanvas", "category_pie_chart", "amount_distribution_pie", "monthly_bar_chart", "top_items_bar_chart", "rolling_average_figure", "cumulative_spending_figure"]
 
 
 class InteractiveCanvas(FigureCanvas):
@@ -248,6 +248,7 @@ def monthly_trend_figure(
     date_col: str = "Date",
     cost_col: str = "Cost",
     title: Optional[str] = None,
+    hide_values: bool = False,
 ):
     """Create a matplotlib figure showing monthly spending trends with Qt integration.
     
@@ -320,38 +321,40 @@ def monthly_trend_figure(
         ax.axhline(avg, color=avg_color, linestyle='--', linewidth=1.5, zorder=1)
 
         # place a small label for the average in the same area as y-axis text/ticks
-        try:
-            ax_text = f"Avg: ${avg:,.2f}"
-            ymin, ymax = ax.get_ylim()
-            if ymax - ymin == 0:
-                y_frac = 0.5
-            else:
-                y_frac = (avg - ymin) / (ymax - ymin)
+        if not hide_values:
+            try:
+                ax_text = f"Avg: ${avg:,.2f}"
+                ymin, ymax = ax.get_ylim()
+                if ymax - ymin == 0:
+                    y_frac = 0.5
+                else:
+                    y_frac = (avg - ymin) / (ymax - ymin)
 
-            # place at the left edge of axes area (x=0 in axes fraction coords)
-            # right-align so it sits next to the y-axis tick labels
-            ax.text(0.0, y_frac, ax_text, transform=ax.transAxes,
-                    color=avg_color, fontsize=9, va='center', ha='right',
-                    bbox=dict(facecolor='white', edgecolor='none', alpha=0.9), clip_on=False)
-        except Exception:
-            # ignore annotation placement errors
-            pass
+                # place at the left edge of axes area (x=0 in axes fraction coords)
+                # right-align so it sits next to the y-axis tick labels
+                ax.text(0.0, y_frac, ax_text, transform=ax.transAxes,
+                        color=avg_color, fontsize=9, va='center', ha='right',
+                        bbox=dict(facecolor='white', edgecolor='none', alpha=0.9), clip_on=False)
+            except Exception:
+                # ignore annotation placement errors
+                pass
     except Exception:
         # non-fatal: if mean calculation fails, continue without average
         avg = None
 
     # Annotate each data point with its amount (small, above the marker)
-    for x, y in zip(dates, values):
-        try:
-            # format cents for small values, round for large values
-            if abs(y) >= 100:
-                lbl = f"${y:,.0f}"
-            else:
-                lbl = f"${y:,.2f}"
-            ax.annotate(lbl, xy=(x, y), xytext=(0, 6), textcoords='offset points',
-                        ha='center', fontsize=8, color='#111', zorder=5)
-        except Exception:
-            continue
+    if not hide_values:
+        for x, y in zip(dates, values):
+            try:
+                # format cents for small values, round for large values
+                if abs(y) >= 100:
+                    lbl = f"${y:,.0f}"
+                else:
+                    lbl = f"${y:,.2f}"
+                ax.annotate(lbl, xy=(x, y), xytext=(0, 6), textcoords='offset points',
+                            ha='center', fontsize=8, color='#111', zorder=5)
+            except Exception:
+                continue
 
     # Set up the canvas with hover data for line chart
     canvas.set_line_data(dates, values, ax, line, x_formatter=lambda d: d.strftime('%b %Y'))
@@ -361,9 +364,28 @@ def monthly_trend_figure(
     ax.set_xlabel("Month", fontsize=11)
     ax.set_ylabel("Amount ($)", fontsize=11)
     
-    # Format x-axis
-    ax.xaxis.set_major_formatter(mdates.DateFormatter('%b %Y'))
-    ax.xaxis.set_major_locator(mdates.MonthLocator(interval=max(1, len(dates)//8)))
+    # Format x-axis based on data range
+    try:
+        min_date = dates[0]
+        max_date = dates[-1]
+        date_range_days = (max_date - min_date).days
+        
+        if date_range_days >= 1095:
+            # For 3+ years, show year starts
+            ax.xaxis.set_major_locator(mdates.YearLocator())
+            ax.xaxis.set_major_formatter(mdates.DateFormatter('%Y'))
+        elif date_range_days >= 365:
+            # For 1-3 years, show every 6 months
+            ax.xaxis.set_major_locator(mdates.MonthLocator(interval=6))
+            ax.xaxis.set_major_formatter(mdates.DateFormatter('%b %Y'))
+        else:
+            # For less than 1 year, show months
+            ax.xaxis.set_major_locator(mdates.MonthLocator())
+            ax.xaxis.set_major_formatter(mdates.DateFormatter('%b %Y'))
+    except Exception:
+        # Fallback formatting
+        ax.xaxis.set_major_formatter(mdates.DateFormatter('%b %Y'))
+        ax.xaxis.set_major_locator(mdates.MonthLocator(interval=max(1, len(dates)//8)))
     
     # Format y-axis
     ax.yaxis.set_major_formatter(plt.FuncFormatter(lambda x, p: f'${x:,.0f}'))
@@ -372,6 +394,10 @@ def monthly_trend_figure(
     ax.grid(True, alpha=0.3)
     ax.spines['top'].set_visible(False)
     ax.spines['right'].set_visible(False)
+    
+    # Hide y-axis values in privacy mode (after formatter)
+    if hide_values:
+        ax.set_yticklabels([])
     
     # Rotate x-axis labels if needed
     if len(dates) > 6:
@@ -387,6 +413,7 @@ def rolling_average_figure(
     cost_col: str = "Cost",
     window: int = 3,
     title: Optional[str] = None,
+    hide_values: bool = False,
 ):
     """Create a monthly series with a rolling average and volatility band.
 
@@ -461,17 +488,46 @@ def rolling_average_figure(
     ax.set_ylabel('Amount ($)')
     ax.grid(True, alpha=0.3)
 
-    # format x-axis: use horizontal, smaller labels for readability
-    ax.xaxis.set_major_formatter(mdates.DateFormatter('%b %Y'))
-    ax.xaxis.set_major_locator(mdates.MonthLocator(interval=max(1, len(dates)//8)))
-    # choose fontsize based on number of ticks to avoid overlap
+    # Hide y-axis values in privacy mode
+    if hide_values:
+        ax.set_yticklabels([])
+
+    # Format x-axis based on data range
     try:
+        min_date = dates[0]
+        max_date = dates[-1]
+        date_range_days = (max_date - min_date).days
+        
+        if date_range_days >= 1095:
+            # For 3+ years, show year starts
+            ax.xaxis.set_major_locator(mdates.YearLocator())
+            ax.xaxis.set_major_formatter(mdates.DateFormatter('%Y'))
+            label_rotation = 0
+        elif date_range_days >= 365:
+            # For 1-3 years, show every 6 months
+            ax.xaxis.set_major_locator(mdates.MonthLocator(interval=6))
+            ax.xaxis.set_major_formatter(mdates.DateFormatter('%b %Y'))
+            label_rotation = 0
+        else:
+            # For less than 1 year, show months
+            ax.xaxis.set_major_locator(mdates.MonthLocator())
+            ax.xaxis.set_major_formatter(mdates.DateFormatter('%b %Y'))
+            label_rotation = 0
+        
+        # Apply rotation
         tick_count = len(dates)
         label_fontsize = 9 if tick_count <= 12 else 8
-        plt.setp(ax.xaxis.get_majorticklabels(), rotation=0, fontsize=label_fontsize)
+        plt.setp(ax.xaxis.get_majorticklabels(), rotation=label_rotation, fontsize=label_fontsize)
     except Exception:
-        # fallback: leave defaults
-        pass
+        # Fallback: use horizontal, smaller labels for readability
+        ax.xaxis.set_major_formatter(mdates.DateFormatter('%b %Y'))
+        ax.xaxis.set_major_locator(mdates.MonthLocator(interval=max(1, len(dates)//8)))
+        try:
+            tick_count = len(dates)
+            label_fontsize = 9 if tick_count <= 12 else 8
+            plt.setp(ax.xaxis.get_majorticklabels(), rotation=0, fontsize=label_fontsize)
+        except Exception:
+            pass
 
     # hover uses the rolling mean values as the primary label
     try:
@@ -495,10 +551,142 @@ def rolling_average_figure(
     return canvas
 
 
+def cumulative_spending_figure(
+    df: pd.DataFrame,
+    date_col: str = "Date",
+    cost_col: str = "Cost",
+    title: Optional[str] = None,
+    hide_values: bool = False,
+):
+    """Create a line chart showing cumulative spending over time (day by day).
+    
+    Shows running total that increases each day purchases are made, and stays
+    flat on days with no spending. Includes all days in the date range.
+    
+    Args:
+        df: DataFrame with date and cost columns.
+        date_col: column name for dates.
+        cost_col: column name for numeric costs.
+        title: optional chart title.
+    
+    Returns:
+        InteractiveCanvas widget with the cumulative spending plot.
+    """
+    fig = Figure(figsize=(10, 4), dpi=100)
+    fig.patch.set_facecolor('white')
+    canvas = InteractiveCanvas(fig)
+    ax = fig.add_subplot(111)
+    
+    if df is None or df.empty:
+        ax.text(0.5, 0.5, 'No data available', transform=ax.transAxes,
+                ha='center', va='center', fontsize=12, color='gray')
+        ax.set_title(title or 'Cumulative Spending')
+        fig.tight_layout()
+        return canvas
+    
+    df = df.copy()
+    if date_col not in df.columns or cost_col not in df.columns:
+        ax.text(0.5, 0.5, f'Missing {date_col} or {cost_col}', transform=ax.transAxes,
+                ha='center', va='center', fontsize=12, color='red')
+        fig.tight_layout()
+        return canvas
+    
+    df[date_col] = pd.to_datetime(df[date_col], errors='coerce')
+    df = df.dropna(subset=[date_col])
+    if df.empty:
+        ax.text(0.5, 0.5, 'No valid dates', transform=ax.transAxes,
+                ha='center', va='center', fontsize=12, color='gray')
+        fig.tight_layout()
+        return canvas
+    
+    df[cost_col] = pd.to_numeric(df[cost_col], errors='coerce').fillna(0.0)
+    
+    # Get date range and create daily index
+    min_date = df[date_col].min()
+    max_date = df[date_col].max()
+    
+    # Create complete daily date range
+    daily_index = pd.date_range(start=min_date, end=max_date, freq='D')
+    
+    # Resample to daily totals (sum spending per day)
+    daily_totals = df.set_index(date_col)[cost_col].resample('D').sum()
+    
+    # Reindex to include all days (fills missing days with 0)
+    daily_totals = daily_totals.reindex(daily_index, fill_value=0.0)
+    
+    # Calculate cumulative sum
+    cumulative = daily_totals.cumsum()
+    
+    if cumulative.empty:
+        ax.text(0.5, 0.5, 'No data to plot', transform=ax.transAxes,
+                ha='center', va='center', fontsize=12, color='gray')
+        fig.tight_layout()
+        return canvas
+    
+    # Plot cumulative spending
+    dates = cumulative.index.to_pydatetime()
+    values = cumulative.values
+    
+    line = ax.plot(dates, values, '-', linewidth=2, color='#1976D2')[0]
+    
+    # Set up hover data
+    canvas.set_line_data(dates, values, ax, line, x_formatter=lambda d: d.strftime('%b %d, %Y'))
+    
+    # Format the plot
+    ax.set_title(title or 'Cumulative Spending', fontsize=14, pad=15)
+    ax.set_xlabel('Date', fontsize=11)
+    ax.set_ylabel('Cumulative Total ($)', fontsize=11)
+    
+    # Format x-axis based on data range
+    date_range_days = (max_date - min_date).days
+    if date_range_days >= 1095:
+        # For 3+ years, show year starts
+        ax.xaxis.set_major_locator(mdates.YearLocator())
+        ax.xaxis.set_major_formatter(mdates.DateFormatter('%Y'))
+    elif date_range_days >= 365:
+        # For 1-3 years, show every 6 months
+        ax.xaxis.set_major_locator(mdates.MonthLocator(interval=6))
+        ax.xaxis.set_major_formatter(mdates.DateFormatter('%b %Y'))
+    else:
+        # For less than 1 year, show months
+        ax.xaxis.set_major_locator(mdates.MonthLocator())
+        ax.xaxis.set_major_formatter(mdates.DateFormatter('%b %Y'))
+    
+    # Format y-axis
+    ax.yaxis.set_major_formatter(plt.FuncFormatter(lambda x, p: f'${x:,.0f}'))
+    
+    # Style
+    ax.grid(True, alpha=0.3)
+    ax.spines['top'].set_visible(False)
+    ax.spines['right'].set_visible(False)
+    
+    # Hide y-axis values in privacy mode
+    if hide_values:
+        ax.set_yticklabels([])
+    
+    # Rotate x-axis labels for readability
+    plt.setp(ax.xaxis.get_majorticklabels(), rotation=45, ha='right')
+    
+    # Add annotation showing final total
+    if not hide_values:
+        try:
+            final_total = float(values[-1])
+            ax.text(0.98, 0.98, f'Total: ${final_total:,.2f}',
+                    transform=ax.transAxes, ha='right', va='top',
+                    bbox=dict(boxstyle='round', fc='white', alpha=0.8, edgecolor='gray'),
+                    fontsize=10, weight='bold')
+        except Exception:
+            pass
+    
+    fig.tight_layout()
+    return canvas
+
+
 def amount_distribution_pie(
     df: pd.DataFrame,
     cost_col: str = "Cost",
     title: Optional[str] = None,
+    hide_values: bool = False,
 ):
     """Create a donut chart showing distribution of spend by transaction-size quartiles.
 
@@ -569,11 +757,12 @@ def amount_distribution_pie(
     ax.set_title(title or 'Spend by transaction quartile', fontsize=13, pad=12)
 
     # center total
-    try:
-        total_amount = float(sum(values))
-        ax.text(0, 0, f"Total\n${total_amount:,.2f}", ha='center', va='center', fontsize=11, weight='bold')
-    except Exception:
-        pass
+    if not hide_values:
+        try:
+            total_amount = float(sum(values))
+            ax.text(0, 0, f"Total\n${total_amount:,.2f}", ha='center', va='center', fontsize=11, weight='bold')
+        except Exception:
+            pass
 
     # Hook up hover data including counts
     try:
@@ -593,6 +782,7 @@ def top_items_bar_chart(
     cost_col: str = "Cost",
     top_n: int = 10,
     title: Optional[str] = None,
+    hide_values: bool = False,
 ):
     """Create a horizontal bar chart showing top items by total spend.
 
@@ -694,12 +884,13 @@ def top_items_bar_chart(
                 left += 0.0
 
         # annotate total at the right end of the stacked bar
-        try:
-            total_val = float(sum(segs))
-            ax.annotate(f"${total_val:,.2f}", xy=(left, y), xytext=(4, 0),
-                        textcoords='offset points', ha='left', va='center', fontsize=9)
-        except Exception:
-            pass
+        if not hide_values:
+            try:
+                total_val = float(sum(segs))
+                ax.annotate(f"${total_val:,.2f}", xy=(left, y), xytext=(4, 0),
+                            textcoords='offset points', ha='left', va='center', fontsize=9)
+            except Exception:
+                pass
 
     ax.set_yticks(y_pos)
     ax.set_yticklabels(items, fontsize=10)
@@ -715,6 +906,10 @@ def top_items_bar_chart(
     ax.spines['right'].set_visible(False)
     ax.grid(axis='x', alpha=0.25)
     ax.set_title(title or f"Top {len(items)} items by spend", fontsize=13, pad=12)
+
+    # Hide x-axis values in privacy mode (horizontal bars show amounts on x-axis)
+    if hide_values:
+        ax.set_xticklabels([])
 
     # Provide hover data: combine item and category for clarity
     try:
@@ -744,6 +939,7 @@ def category_pie_chart(
     cost_col: str = "Cost",
     title: Optional[str] = None,
     top_n: Optional[int] = 10,
+    hide_values: bool = False,
 ):
     """Create a pie chart showing percent of expenditure by category.
 
@@ -814,11 +1010,12 @@ def category_pie_chart(
     ax.set_title(title or 'Spending by category', fontsize=13, pad=12)
 
     # Center total amount text
-    try:
-        total_amount = float(sum(values))
-        ax.text(0, 0, f"Total\n${total_amount:,.2f}", ha='center', va='center', fontsize=11, weight='bold')
-    except Exception:
-        pass
+    if not hide_values:
+        try:
+            total_amount = float(sum(values))
+            ax.text(0, 0, f"Total\n${total_amount:,.2f}", ha='center', va='center', fontsize=11, weight='bold')
+        except Exception:
+            pass
 
     # Hook up hover data
     try:
@@ -833,6 +1030,7 @@ def category_pie_chart(
 def monthly_pie_chart(
     monthly_series: pd.Series,
     title: Optional[str] = None,
+    hide_values: bool = False,
 ):
     """Create a donut pie chart showing spend by month.
 
@@ -868,7 +1066,11 @@ def monthly_pie_chart(
         except Exception:
             return str(x)
 
-    visual_labels = [f"{m}\n{_fmt_amt(v)}" for m, v in zip(labels, values)]
+    # Only show amounts on labels if privacy mode is off
+    if hide_values:
+        visual_labels = [f"{m}" for m in labels]
+    else:
+        visual_labels = [f"{m}\n{_fmt_amt(v)}" for m, v in zip(labels, values)]
 
     cmap = plt.get_cmap('tab20')
     colors = [cmap(i) for i in range(len(labels))]
@@ -885,11 +1087,12 @@ def monthly_pie_chart(
 
     ax.set_title(title or 'Spending by month', fontsize=13, pad=12)
 
-    try:
-        total_amount = float(sum(values))
-        ax.text(0, 0, f"Total\n${total_amount:,.2f}", ha='center', va='center', fontsize=11, weight='bold')
-    except Exception:
-        pass
+    if not hide_values:
+        try:
+            total_amount = float(sum(values))
+            ax.text(0, 0, f"Total\n${total_amount:,.2f}", ha='center', va='center', fontsize=11, weight='bold')
+        except Exception:
+            pass
 
     try:
         canvas.set_pie_data(labels, values, ax, wedges, value_formatter=lambda x: f"${x:,.2f}")

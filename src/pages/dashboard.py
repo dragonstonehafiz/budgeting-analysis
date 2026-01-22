@@ -73,6 +73,12 @@ class DashboardPage(QWidget):
         self._remake_btn.setToolTip('Backup and reinitialize purchases.xlsx (sorts rows by Date)')
         self._remake_btn.clicked.connect(self._on_remake_clicked)
         controls_row.addWidget(self._remake_btn)
+        # Privacy mode toggle
+        from PySide6.QtWidgets import QCheckBox
+        self._privacy_mode = QCheckBox('Privacy Mode')
+        self._privacy_mode.setToolTip('Hide all monetary values and sensitive data')
+        self._privacy_mode.stateChanged.connect(self._on_privacy_mode_changed)
+        controls_row.addWidget(self._privacy_mode)
         controls_row.addStretch(1)
         outer_layout.addLayout(controls_row)
 
@@ -183,7 +189,7 @@ class DashboardPage(QWidget):
         controls_h = QHBoxLayout()
         controls_h.addWidget(QLabel('Chart:'))
         self._overview_chart_combo = QComboBox()
-        self._overview_chart_combo.addItems(['Monthly spending trend', 'Rolling average'])
+        self._overview_chart_combo.addItems(['Monthly spending trend', 'Rolling average', 'Cumulative spending'])
         self._overview_chart_combo.setCurrentIndex(0)
         controls_h.addWidget(self._overview_chart_combo)
         controls_h.addStretch(1)
@@ -278,7 +284,15 @@ class DashboardPage(QWidget):
         self._items_table.setAlternatingRowColors(True)
         # make the items table expand vertically to fill available space
         self._items_table.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+        # set minimum height to ensure table takes up significant vertical space
+        self._items_table.setMinimumHeight(400)
         right_layout.addWidget(self._items_table)
+
+        # Add placeholders for month-specific charts below the items table
+        # Category pie chart for selected month
+        self._month_category_pie_view = None
+        # Top items chart for selected month
+        self._month_top_items_view = None
 
         details_v.addWidget(left_frame)
         details_v.addWidget(right_frame)
@@ -351,14 +365,15 @@ class DashboardPage(QWidget):
         if 'Year' in self._data_raw.columns:
             yrs = self._data_raw['Year'].dropna().astype(str).unique().tolist()
             try:
-                years = sorted(yrs, key=lambda x: int(x))
+                years = sorted(yrs, key=lambda x: int(x), reverse=True)
             except Exception:
-                years = sorted(yrs)
+                years = sorted(yrs, reverse=True)
         else:
-            years = sorted({str(int(d.year)) for d in self._data_raw['Date'].dropna()})
+            years = sorted({str(int(d.year)) for d in self._data_raw['Date'].dropna()}, reverse=True)
 
         self.year_combo.blockSignals(True)
         self.year_combo.clear()
+        self.year_combo.addItem("Last 12 months")
         self.year_combo.addItem("All")
         for y in years:
             self.year_combo.addItem(y)
@@ -480,7 +495,9 @@ class DashboardPage(QWidget):
         for k, v in mapping.items():
             lbl = self._cards.get(k)
             if lbl is not None:
-                lbl.setText(v)
+                # Apply privacy masking
+                display_val = self._mask_value(v)
+                lbl.setText(display_val)
                 tip = tooltips.get(k, '')
                 try:
                     lbl.setToolTip(tip)
@@ -495,8 +512,20 @@ class DashboardPage(QWidget):
         if not hasattr(self, '_data_raw') or self._data_raw is None:
             return
 
+        # if 'Last 12 months' show data from the last 12 complete calendar months
+        if selection_text == 'Last 12 months':
+            try:
+                # get the most recent date in the data
+                max_date = pd.to_datetime(self._data_raw['Date']).max()
+                # get the first day of that month
+                month_start = max_date.replace(day=1)
+                # go back 11 months (to include the current month = 12 total complete months)
+                twelve_months_ago = month_start - pd.DateOffset(months=11)
+                df_sel = self._data_raw[pd.to_datetime(self._data_raw['Date']) >= twelve_months_ago]
+            except Exception:
+                df_sel = self._data_raw
         # if 'All' show full data
-        if not selection_text or selection_text == 'All':
+        elif not selection_text or selection_text == 'All':
             df_sel = self._data_raw
         else:
             # try parse year
@@ -545,11 +574,11 @@ class DashboardPage(QWidget):
 
         # render monthly details table when a specific year is selected
         try:
-            if selection_text and selection_text != 'All':
+            if selection_text and selection_text not in ('All', 'Last 12 months'):
                 # df_sel is already filtered to the chosen year in _compute_and_update
                 self._render_monthly_details(df_sel)
             else:
-                # hide details for All
+                # hide details for All and Last 12 months
                 try:
                     self.monthly_details_section.setVisible(False)
                 except Exception:
@@ -674,10 +703,16 @@ class DashboardPage(QWidget):
             # choose which chart to show based on selector
             sel = self._overview_chart_combo.currentText()
 
+            # Check privacy mode
+            privacy_mode = self._privacy_mode.isChecked() if hasattr(self, '_privacy_mode') else False
+
             if sel == 'Rolling average':
-                self._monthly_view = rolling_average_figure(df_sel, title=f"{3}-month rolling average")
+                self._monthly_view = rolling_average_figure(df_sel, title=f"{3}-month rolling average", hide_values=privacy_mode)
+            elif sel == 'Cumulative spending':
+                from utils.plots import cumulative_spending_figure
+                self._monthly_view = cumulative_spending_figure(df_sel, title="Cumulative Spending", hide_values=privacy_mode)
             else:
-                self._monthly_view = monthly_trend_figure(df_sel, title="Monthly Spending Trend")
+                self._monthly_view = monthly_trend_figure(df_sel, title="Monthly Spending Trend", hide_values=privacy_mode)
 
             self._monthly_view.setMinimumHeight(300)
             # insert after the controls layout so the chart selector remains the first row
@@ -689,12 +724,12 @@ class DashboardPage(QWidget):
             charts_layout.setContentsMargins(0, 0, 0, 0)
 
             # category pie canvas
-            self._category_pie_view = category_pie_chart(df_sel, title="Spending by category")
+            self._category_pie_view = category_pie_chart(df_sel, title="Spending by category", hide_values=privacy_mode)
             self._category_pie_view.setMinimumHeight(260)
             charts_layout.addWidget(self._category_pie_view, 1)
 
             # amount distribution canvas (quartile)
-            self._amount_dist_view = amount_distribution_pie(df_sel, title="Spend by transaction quartile")
+            self._amount_dist_view = amount_distribution_pie(df_sel, title="Spend by transaction quartile", hide_values=privacy_mode)
             self._amount_dist_view.setMinimumHeight(260)
             charts_layout.addWidget(self._amount_dist_view, 1)
 
@@ -704,7 +739,7 @@ class DashboardPage(QWidget):
             self.overall_data_section.content.layout().insertWidget(2, self._charts_row)
 
             # top-items canvas
-            self._top_items_view = top_items_bar_chart(df_sel, top_n=10, title="Top items by spend")
+            self._top_items_view = top_items_bar_chart(df_sel, top_n=10, title="Top items by spend", hide_values=privacy_mode)
             # top items come after the charts row
             self.overall_data_section.content.layout().insertWidget(3, self._top_items_view)
 
@@ -724,9 +759,13 @@ class DashboardPage(QWidget):
                 notes = row.get('Notes', '')
                 date_val = row.get('Date')
                 date_str = pd.to_datetime(date_val).strftime('%Y-%m-%d') if pd.notna(date_val) else str(date_val)
+                
+                # Apply privacy masking to cost only
+                cost_display = self._mask_money(float(cost))
+                
                 self._top5_table.setItem(r, 0, QTableWidgetItem(str(item)))
                 self._top5_table.setItem(r, 1, QTableWidgetItem(str(cat)))
-                self._top5_table.setItem(r, 2, QTableWidgetItem(f"${float(cost):,.2f}"))
+                self._top5_table.setItem(r, 2, QTableWidgetItem(cost_display))
                 self._top5_table.setItem(r, 3, QTableWidgetItem(date_str))
                 self._top5_table.setItem(r, 4, QTableWidgetItem(str(notes)))
 
@@ -828,7 +867,7 @@ class DashboardPage(QWidget):
                     self._category_combo.clear()
                     for it in new_items:
                         self._category_combo.addItem(it)
-                    # restore previous selection if possible, otherwise default to first
+                    # restore previous selection if possible, otherwise default to highest-spend category
                     if prev and prev in new_items:
                         idx = new_items.index(prev)
                         try:
@@ -838,7 +877,17 @@ class DashboardPage(QWidget):
                     else:
                         try:
                             if len(new_items) > 0:
-                                self._category_combo.setCurrentIndex(0)
+                                # find category with highest spend
+                                category_totals = df.groupby('Category')['Cost'].sum().sort_values(ascending=False)
+                                if not category_totals.empty:
+                                    top_category = str(category_totals.index[0])
+                                    if top_category in new_items:
+                                        idx = new_items.index(top_category)
+                                        self._category_combo.setCurrentIndex(idx)
+                                    else:
+                                        self._category_combo.setCurrentIndex(0)
+                                else:
+                                    self._category_combo.setCurrentIndex(0)
                         except Exception:
                             pass
                     self._category_combo.blockSignals(False)
@@ -881,7 +930,8 @@ class DashboardPage(QWidget):
             # create top-items bar chart for this category
             try:
                 from utils.plots import top_items_bar_chart
-                chart = top_items_bar_chart(df_cat, top_n=10, title=f"Top items — {sel if sel else 'All'}")
+                privacy_mode = self._privacy_mode.isChecked() if hasattr(self, '_privacy_mode') else False
+                chart = top_items_bar_chart(df_cat, top_n=10, title=f"Top items — {sel if sel else 'All'}", hide_values=privacy_mode)
                 chart.setMinimumHeight(240)
                 # insert chart above the top table in the category content area
                 try:
@@ -911,9 +961,13 @@ class DashboardPage(QWidget):
                     notes = row.get('Notes', '')
                     date_val = row.get('Date')
                     date_str = pd.to_datetime(date_val).strftime('%Y-%m-%d') if pd.notna(date_val) else str(date_val)
+                    
+                    # Apply privacy masking to cost only
+                    cost_display = self._mask_money(float(cost))
+                    
                     self._category_top_table.setItem(r, 0, QTableWidgetItem(str(item)))
                     self._category_top_table.setItem(r, 1, QTableWidgetItem(str(cat)))
-                    self._category_top_table.setItem(r, 2, QTableWidgetItem(f"${float(cost):,.2f}"))
+                    self._category_top_table.setItem(r, 2, QTableWidgetItem(cost_display))
                     self._category_top_table.setItem(r, 3, QTableWidgetItem(date_str))
                     self._category_top_table.setItem(r, 4, QTableWidgetItem(str(notes)))
             except Exception:
@@ -1007,7 +1061,8 @@ class DashboardPage(QWidget):
                 # create pie canvas using helper in utils.plots
                 try:
                     from utils.plots import monthly_pie_chart
-                    pie = monthly_pie_chart(monthly_series, title='Month share')
+                    privacy_mode = self._privacy_mode.isChecked() if hasattr(self, '_privacy_mode') else False
+                    pie = monthly_pie_chart(monthly_series, title='Month share', hide_values=privacy_mode)
                     pie.setMinimumHeight(260)
                     # hide the textual table and insert pie into the left layout
                     try:
@@ -1083,18 +1138,41 @@ class DashboardPage(QWidget):
 
                         # require a valid month label (no 'All' option anymore)
                         if not month_label:
-                            # nothing selected -> clear table
+                            # nothing selected -> clear table and charts
                             try:
                                 self._items_table.setRowCount(0)
+                            except Exception:
+                                pass
+                            # clear month-specific charts
+                            try:
+                                if self._month_category_pie_view is not None:
+                                    self._monthly_right_layout.removeWidget(self._month_category_pie_view)
+                                    self._month_category_pie_view.deleteLater()
+                                    self._month_category_pie_view = None
+                                if self._month_top_items_view is not None:
+                                    self._monthly_right_layout.removeWidget(self._month_top_items_view)
+                                    self._month_top_items_view.deleteLater()
+                                    self._month_top_items_view = None
                             except Exception:
                                 pass
                             return
 
                         dt = pd.to_datetime(month_label, format='%b %Y', errors='coerce')
                         if pd.isna(dt):
-                            # invalid label -> clear table
+                            # invalid label -> clear table and charts
                             try:
                                 self._items_table.setRowCount(0)
+                            except Exception:
+                                pass
+                            try:
+                                if self._month_category_pie_view is not None:
+                                    self._monthly_right_layout.removeWidget(self._month_category_pie_view)
+                                    self._month_category_pie_view.deleteLater()
+                                    self._month_category_pie_view = None
+                                if self._month_top_items_view is not None:
+                                    self._monthly_right_layout.removeWidget(self._month_top_items_view)
+                                    self._month_top_items_view.deleteLater()
+                                    self._month_top_items_view = None
                             except Exception:
                                 pass
                             return
@@ -1127,11 +1205,57 @@ class DashboardPage(QWidget):
                             except Exception:
                                 date_str = str(row.get('Date', ''))
 
+                            # Apply privacy masking to cost only
+                            cost_display = self._mask_money(float(cost))
+
                             self._items_table.setItem(r, 0, QTableWidgetItem(str(item_val)))
                             self._items_table.setItem(r, 1, QTableWidgetItem(str(cat)))
-                            self._items_table.setItem(r, 2, QTableWidgetItem(f"${float(cost):,.2f}"))
+                            self._items_table.setItem(r, 2, QTableWidgetItem(cost_display))
                             self._items_table.setItem(r, 3, QTableWidgetItem(date_str))
                             self._items_table.setItem(r, 4, QTableWidgetItem(str(notes)))
+
+                        # Create/update month-specific charts below the table
+                        # Remove old charts first
+                        try:
+                            if self._month_category_pie_view is not None:
+                                self._monthly_right_layout.removeWidget(self._month_category_pie_view)
+                                self._month_category_pie_view.deleteLater()
+                                self._month_category_pie_view = None
+                            if self._month_top_items_view is not None:
+                                self._monthly_right_layout.removeWidget(self._month_top_items_view)
+                                self._month_top_items_view.deleteLater()
+                                self._month_top_items_view = None
+                        except Exception:
+                            pass
+
+                        # Create new charts for this month's data
+                        try:
+                            from utils.plots import category_pie_chart, top_items_bar_chart
+                            
+                            privacy_mode = self._privacy_mode.isChecked() if hasattr(self, '_privacy_mode') else False
+                            
+                            # Category pie for selected month
+                            if not items_df.empty:
+                                self._month_category_pie_view = category_pie_chart(
+                                    items_df, 
+                                    title=f"Spending by category — {month_label}",
+                                    hide_values=privacy_mode
+                                )
+                                self._month_category_pie_view.setMinimumHeight(260)
+                                self._monthly_right_layout.addWidget(self._month_category_pie_view)
+
+                                # Top items for selected month
+                                self._month_top_items_view = top_items_bar_chart(
+                                    items_df, 
+                                    top_n=10, 
+                                    title=f"Top items — {month_label}",
+                                    hide_values=privacy_mode
+                                )
+                                self._month_top_items_view.setMinimumHeight(240)
+                                self._monthly_right_layout.addWidget(self._month_top_items_view)
+                        except Exception:
+                            pass
+
                     except Exception:
                         # clear table on error
                         try:
@@ -1172,10 +1296,34 @@ class DashboardPage(QWidget):
         # Show or hide the per-year monthly breakdown section depending on selection
         try:
             if hasattr(self, 'monthly_details_section'):
-                if not text or text == 'All':
+                if not text or text in ('All', 'Last 12 months'):
                     self.monthly_details_section.setVisible(False)
                 else:
                     self.monthly_details_section.setVisible(True)
         except Exception:
             pass
+
+    def _on_privacy_mode_changed(self):
+        """Handle privacy mode toggle - refresh all views with masked/unmasked data."""
+        try:
+            # Re-render everything with current selection
+            year_text = self.year_combo.currentText() if hasattr(self, 'year_combo') else 'All'
+            self._compute_and_update(year_text)
+        except Exception:
+            pass
+
+    def _mask_value(self, value: str) -> str:
+        """Return masked version of value if privacy mode is enabled."""
+        if hasattr(self, '_privacy_mode') and self._privacy_mode.isChecked():
+            return '***'
+        return value
+
+    def _mask_money(self, amount: float) -> str:
+        """Return masked money value if privacy mode enabled, otherwise formatted."""
+        if hasattr(self, '_privacy_mode') and self._privacy_mode.isChecked():
+            return '$***'
+        try:
+            return f"${amount:,.2f}"
+        except Exception:
+            return str(amount)
 

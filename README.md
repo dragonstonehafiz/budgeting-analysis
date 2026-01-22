@@ -8,16 +8,17 @@ A PySide6 (Qt) desktop application for tracking, analyzing, and visualizing pers
 
 - **Desktop Application (PySide6/Qt)**
 
-  - **Dashboard**: Yearly overview with KPIs, monthly trends, rolling averages, category breakdowns, and interactive plots
-  - **Table View**: Sortable data table with search functionality and column auto-resizing
+  - **Dashboard**: Single-page interface with KPIs, trend analysis, and interactive visualizations
+  - **Time-based Filtering**: View Last 12 months, specific years, or all data
   - **Data Management**: One-click XLSX remake functionality with automatic backup and sorting
 
 - **Interactive Visualization (matplotlib)**
 
-  - Monthly trend charts with rolling averages
-  - Category pie charts and spending distribution
-  - Top items bar charts with hover tooltips including notes
-  - Monthly spending breakdown with visual labels
+  - Monthly trend charts with 3-month rolling averages
+  - Cumulative spending chart showing day-by-day total growth
+  - Category pie charts and spending distribution by transaction size
+  - Top items bar charts with category-colored segments and hover tooltips
+  - Month-specific breakdowns with charts for individual months
 
 - **Excel File Handling (openpyxl)**
 
@@ -32,8 +33,7 @@ A PySide6 (Qt) desktop application for tracking, analyzing, and visualizing pers
 src/
 ├── qt_app.py               # Main application entry point (PySide6)
 ├── pages/
-│   ├── dashboard.py        # Dashboard page: plots, KPIs, controls
-│   └── table_view.py       # Table view: searchable, sortable table
+│   └── dashboard.py        # Dashboard page: plots, KPIs, controls
 ├── utils/
 │   ├── category_colors.py  # Category color palette helpers
 │   ├── data_loader.py      # Load & preprocess XLSX data
@@ -127,16 +127,27 @@ Example:
 ## Key Features in Detail
 
 - **Dashboard Page**: 
-  - Year selector and search functionality with sticky controls
-  - Monthly trend plots with rolling averages
-  - Category distribution and monthly spending breakdowns
-  - Top spending items with category filtering
-  - Interactive hover tooltips with item notes
-
-- **Table View**: 
-  - Sortable data table with search button
-  - Auto-resizing columns that adapt to window size
-  - Filtering by item name or notes
+  - **Year Selector**: View Last 12 months (complete calendar months), specific years (sorted newest first), or all data
+  - **Search Functionality**: Filter purchases by item name or notes
+  - **Chart Options**: Switch between monthly trends, 3-month rolling average, or cumulative spending
+  - **Statistics Panel**: 13 KPIs including total spent, averages, quartiles, and spending volatility
+  - **Overall Data Section**: 
+    - Selectable trend charts (monthly/rolling/cumulative)
+    - Top 10 most expensive items table
+    - Category distribution and amount quartile pie charts
+    - Top items bar chart with category-colored segments
+  - **Monthly Details** (when specific year selected):
+    - 12-month spending pie chart
+    - Month selector with detailed items table
+    - Category breakdown for selected month
+    - Top items chart for selected month
+  - **Category Section**:
+    - Automatic selection of highest-spend category
+    - Category-specific top items chart and table
+  - **Interactive Features**:
+    - Hover tooltips showing item details and notes
+    - Category-colored visualizations for easy identification
+    - Responsive charts that adapt to data range
 
 - **Data Management**:
   - One-click XLSX remake with confirmation dialog

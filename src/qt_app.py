@@ -24,20 +24,12 @@ from PySide6.QtWidgets import (
     QWidget,
     QVBoxLayout,
     QLabel,
-    QListWidget,
-    QListWidgetItem,
-    QStackedWidget,
-    QHBoxLayout,
-    QFrame,
-    QPushButton,
-    QMenuBar,
     QFileDialog,
 )
-from PySide6.QtCore import Qt, QSize
+from PySide6.QtCore import Qt
 from PySide6.QtGui import QAction
  
 from pages.dashboard import DashboardPage
-from pages.table_view import TableViewPage
 from utils.path_helpers import get_data_folder
 
 
@@ -65,31 +57,9 @@ class MainWindow(QMainWindow):
         # Menu
         self._create_menu()
 
-        # Main layout
-        central = QWidget()
-        self.setCentralWidget(central)
-        main_layout = QHBoxLayout(central)
-
-        # Sidebar (navigation)
-        self.sidebar = QListWidget()
-        self.sidebar.setMaximumWidth(220)
-        self.sidebar.setSpacing(6)
-        self.sidebar.setFrameShape(QFrame.NoFrame)
-        for name in ["Dashboard", "Table View"]:
-            it = QListWidgetItem(name)
-            it.setSizeHint(QSize(200, 42))
-            self.sidebar.addItem(it)
-        self.sidebar.currentRowChanged.connect(self.on_nav_changed)
-
-        # Stack for pages
-        self.stack = QStackedWidget()
-        self._create_pages()
-
-        main_layout.addWidget(self.sidebar)
-        main_layout.addWidget(self.stack, 1)
-
-        # select first page now that stack exists
-        self.sidebar.setCurrentRow(0)
+        # Main layout - just dashboard page, no sidebar
+        self.dashboard = DashboardPage()
+        self.setCentralWidget(self.dashboard)
 
         # Status bar
         self.statusBar().showMessage(f"Data folder: {self.data_dir}")
@@ -110,22 +80,6 @@ class MainWindow(QMainWindow):
         about_action = QAction("About", self)
         about_action.triggered.connect(self.show_about)
         help_menu.addAction(about_action)
-
-    def _create_pages(self):
-        # Dashboard page
-        dash = DashboardPage()
-
-        # Table view page
-        table = TableViewPage()
-
-        # Import/Export/Settings and Help pages removed per request
-        pages = (dash, table)
-
-        for w in pages:
-            self.stack.addWidget(w)
-
-    def on_nav_changed(self, index: int):
-        self.stack.setCurrentIndex(index)
 
     def open_data_folder(self):
         folder = QFileDialog.getExistingDirectory(self, "Select data folder", str(self.data_dir))
