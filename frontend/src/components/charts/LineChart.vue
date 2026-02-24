@@ -1,180 +1,103 @@
-<template>
-  <div class="line-chart-wrapper">
+﻿<template>
+  <div>
     <h3 v-if="title" class="chart-title">{{ title }}</h3>
-
-    <apexchart
-      type="line"
-      :height="height"
-      :options="chartOptions"
-      :series="series"
-    />
-
+    <div :style="{ height: height + 'px', position: 'relative' }">
+      <Line :data="chartData" :options="chartOptions" />
+    </div>
     <p v-if="caption" class="chart-caption">{{ caption }}</p>
   </div>
 </template>
 
 <script setup>
 import { computed } from 'vue'
-import VueApexCharts from 'vue3-apexcharts'
+import { Line } from 'vue-chartjs'
+import {
+  Chart as ChartJS,
+  TimeScale,
+  LinearScale,
+  PointElement,
+  LineElement,
+  Tooltip,
+  Filler,
+  Legend,
+} from 'chart.js'
+import 'chartjs-adapter-date-fns'
 
-// Register the component locally
-const apexchart = VueApexCharts
+ChartJS.register(TimeScale, LinearScale, PointElement, LineElement, Tooltip, Filler, Legend)
 
 const props = defineProps({
-  /** ApexCharts series array — already bucketed and transformed by useChartData.js */
-  series: {
-    type: Array,
-    required: true,
-  },
-  /** Chart heading displayed above the chart */
-  title: {
-    type: String,
-    default: '',
-  },
-  /** Optional y-value for a dashed horizontal average annotation line */
-  averageLine: {
-    type: Number,
-    default: null,
-  },
-  /** Optional caption rendered below the chart (e.g. rolling average explanation) */
-  caption: {
-    type: String,
-    default: '',
-  },
-  /** Chart height in pixels */
-  height: {
-    type: Number,
-    default: 320,
-  },
+  series:      { type: Array,  required: true },
+  title:       { type: String, default: '' },
+  averageLine: { type: Number, default: null },
+  caption:     { type: String, default: '' },
+  height:      { type: Number, default: 320 },
 })
 
-const chartOptions = computed(() => {
-  // Detect whether any series uses rangeArea (rolling band) — affects stroke config
-  const hasRangeArea = props.series.some(s => s.type === 'rangeArea')
-  const hasScatter = props.series.some(s => s.type === 'scatter')
+const chartData = computed(() => {
+  if (!props.series?.length) return { datasets: [] }
 
-  // Per-series stroke widths: scatter → 0, rangeArea → 0, line → 2
-  const strokeWidths = props.series.map(s => {
-    if (s.type === 'scatter' || s.type === 'rangeArea') return 0
-    return 2
-  })
+  const datasets = []
+  const allX = props.series.flatMap(s => s.data.map(d => d.x))
+  const minX  = Math.min(...allX)
+  const maxX  = Math.max(...allX)
 
-  // Per-series fill: rangeArea gets semi-transparent fill, others solid/none
-  const fills = {
-    type: props.series.map(s => (s.type === 'rangeArea' ? 'solid' : 'solid')),
-    opacity: props.series.map(s => (s.type === 'rangeArea' ? 0.12 : 1)),
+  for (const s of props.series) {
+    if (s.type === 'rangeArea') {
+      const upper = s.data.map(d => ({ x: d.x, y: Array.isArray(d.y) ? d.y[1] : d.y }))
+      const lower = s.data.map(d => ({ x: d.x, y: Array.isArray(d.y) ? d.y[0] : d.y }))
+      // upper fills down to the next dataset (lower), creating the band
+      datasets.push({ label: s.name, data: upper, borderWidth: 0, backgroundColor: 'rgba(59,130,246,0.12)', fill: '+1', pointRadius: 0, tension: 0.3 })
+      datasets.push({ label: '',     data: lower, borderWidth: 0, backgroundColor: 'transparent',           fill: false, pointRadius: 0, tension: 0.3 })
+    } else if (s.type === 'scatter') {
+      datasets.push({ label: s.name, data: s.data, type: 'scatter', backgroundColor: 'rgba(100,149,237,0.45)', pointRadius: 3 })
+    } else {
+      datasets.push({ label: s.name, data: s.data, borderColor: '#3b82f6', backgroundColor: 'rgba(59,130,246,0.07)', fill: false, pointRadius: 3, tension: 0.2, borderWidth: 2 })
+    }
   }
 
-  // Per-series colors
-  const defaultColors = ['#9E9E9E', '#1976D2', '#1976D2']
-  const colors =
-    props.series.length > 1
-      ? defaultColors.slice(0, props.series.length)
-      : ['#1976D2']
-
-  // Average annotation
-  const yAnnotations = []
-  if (props.averageLine !== null && props.averageLine !== undefined) {
-    yAnnotations.push({
-      y: props.averageLine,
-      borderColor: '#d32f2f',
-      strokeDashArray: 6,
-      label: {
-        text: `Avg: $${props.averageLine.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
-        position: 'left',
-        offsetX: 10,
-        style: { color: '#d32f2f', background: 'transparent', fontSize: '12px' },
-      },
+  if (props.averageLine != null && allX.length) {
+    datasets.push({
+      label: 'Average',
+      data: [{ x: minX, y: props.averageLine }, { x: maxX, y: props.averageLine }],
+      borderColor: 'rgba(220,53,69,0.75)',
+      borderDash: [6, 3],
+      borderWidth: 1.5,
+      pointRadius: 0,
+      fill: false,
     })
   }
 
-  return {
-    chart: {
-      type: hasRangeArea ? 'rangeArea' : hasScatter ? 'line' : 'line',
-      toolbar: { show: false },
-      zoom: { enabled: false },
-      animations: { enabled: true, speed: 300 },
-      background: 'transparent',
-    },
-    // mixed types need explicit per-series type declarations
-    ...(hasRangeArea || hasScatter
-      ? {}
-      : {}),
-    colors,
-    stroke: {
-      curve: 'smooth',
-      width: strokeWidths,
-    },
-    fill: fills,
-    markers: {
-      size: props.series.map(s => (s.type === 'scatter' ? 4 : s.type === 'rangeArea' ? 0 : 4)),
-    },
-    dataLabels: {
-      enabled: false,
-    },
-    xaxis: {
-      type: 'datetime',
-      labels: {
-        datetimeUTC: false,
-        style: { fontSize: '12px', colors: '#555' },
-        datetimeFormatter: {
-          year: 'yyyy',
-          month: "MMM 'yy",
-          day: 'dd MMM',
-        },
-      },
-      axisBorder: { show: false },
-      axisTicks: { show: false },
-    },
-    yaxis: {
-      labels: {
-        formatter: val => `$${Number(val).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`,
-        style: { fontSize: '12px', colors: '#555' },
-      },
-    },
-    tooltip: {
-      x: { format: "MMM yyyy" },
-      y: {
-        formatter: val =>
-          val === null || val === undefined
-            ? ''
-            : `$${Number(val).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
-      },
-    },
-    annotations: {
-      yaxis: yAnnotations,
-    },
-    grid: {
-      borderColor: '#e0e0e0',
-      strokeDashArray: 4,
-      xaxis: { lines: { show: false } },
-    },
-    legend: {
-      show: props.series.length > 1,
-      position: 'top',
-      horizontalAlign: 'right',
-      fontSize: '12px',
-    },
-  }
+  return { datasets }
 })
+
+const chartOptions = {
+  responsive: true,
+  maintainAspectRatio: false,
+  animation: false,
+  plugins: {
+    legend: { display: false },
+    tooltip: {
+      callbacks: {
+        label: ctx => ` $${ctx.parsed.y?.toFixed(2) ?? ''}`,
+      },
+    },
+  },
+  scales: {
+    x: {
+      type: 'time',
+      time: { displayFormats: { day: 'dd MMM', week: 'dd MMM', month: "MMM yy" }, tooltipFormat: 'dd MMM yyyy' },
+      grid: { display: false },
+      ticks: { color: '#666', maxTicksLimit: 12 },
+    },
+    y: {
+      ticks: { callback: v => `$${v.toLocaleString()}`, color: '#666' },
+      grid: { color: 'rgba(0,0,0,0.05)' },
+    },
+  },
+}
 </script>
 
 <style scoped>
-.line-chart-wrapper {
-  width: 100%;
-}
-
-.chart-title {
-  font-size: 1rem;
-  font-weight: 600;
-  color: #333;
-  margin: 0 0 0.5rem 0;
-}
-
-.chart-caption {
-  font-size: 0.78rem;
-  color: #888;
-  text-align: center;
-  margin: 0.25rem 0 0;
-}
+.chart-title  { font-size: 0.95rem; font-weight: 600; color: #333; margin: 0 0 0.5rem; }
+.chart-caption { font-size: 0.78rem; color: #888; text-align: center; margin: 0.25rem 0 0; }
 </style>

@@ -282,3 +282,94 @@ export function toTopItemsSeries(transactions, topN = 10) {
 
   return { series, itemNames, itemColors }
 }
+
+// ---------------------------------------------------------------------------
+// Summary statistics
+// ---------------------------------------------------------------------------
+
+/**
+ * Computes a full set of summary statistics from a transaction array.
+ *
+ * @param {Array} transactions
+ * @returns {{
+ *   totalSpent: number,
+ *   itemsBought: number,
+ *   averageSpend: number,
+ *   p25: number,
+ *   median: number,
+ *   p75: number,
+ *   stdDev: number,
+ *   avgWeeklySpend: number,
+ *   avgMonthlySpend: number,
+ *   avgYearlySpend: number,
+ *   spendingVolatility: number,
+ * }}
+ */
+export function computeStats(transactions) {
+  if (!transactions || transactions.length === 0) {
+    return {
+      totalSpent: 0, itemsBought: 0, averageSpend: 0,
+      p25: 0, median: 0, p75: 0, stdDev: 0,
+      avgWeeklySpend: 0, avgMonthlySpend: 0, avgYearlySpend: 0, spendingVolatility: 0,
+    }
+  }
+
+  const costs = transactions.map(t => t.Cost).sort((a, b) => a - b)
+  const count = costs.length
+  const total = costs.reduce((s, c) => s + c, 0)
+  const mean  = total / count
+
+  const pct = (p) => {
+    const idx = (p / 100) * (count - 1)
+    const lo  = Math.floor(idx)
+    const hi  = Math.ceil(idx)
+    return costs[lo] + (costs[hi] - costs[lo]) * (idx - lo)
+  }
+
+  const variance = costs.reduce((s, c) => s + (c - mean) ** 2, 0) / count
+  const stdDev   = Math.sqrt(variance)
+
+  // Date range for time-averaged stats
+  const dates     = transactions.map(t => new Date(t.Date)).sort((a, b) => a - b)
+  const dayRange  = Math.max(1, (dates[dates.length - 1] - dates[0]) / 86_400_000)
+  const weekRange = dayRange / 7
+
+  // Average of actual monthly bucket totals (not total / months elapsed)
+  const monthlyMap = {}
+  transactions.forEach(t => {
+    const key = t.Date.slice(0, 7)           // "YYYY-MM"
+    monthlyMap[key] = (monthlyMap[key] || 0) + t.Cost
+  })
+  const monthlyTotals = Object.values(monthlyMap)
+  const avgMonthlySpend = monthlyTotals.reduce((s, v) => s + v, 0) / monthlyTotals.length
+
+  // Average of actual yearly bucket totals
+  const yearlyMap = {}
+  transactions.forEach(t => {
+    const key = t.Date.slice(0, 4)           // "YYYY"
+    yearlyMap[key] = (yearlyMap[key] || 0) + t.Cost
+  })
+  const yearlyTotals    = Object.values(yearlyMap)
+  const avgYearlySpend  = yearlyTotals.reduce((s, v) => s + v, 0) / yearlyTotals.length
+
+  // Spending volatility = coefficient of variation on monthly totals (%)
+  const monthlyMean = avgMonthlySpend
+  const monthlyStd  = Math.sqrt(
+    monthlyTotals.reduce((s, v) => s + (v - monthlyMean) ** 2, 0) / monthlyTotals.length
+  )
+  const spendingVolatility = monthlyMean > 0 ? (monthlyStd / monthlyMean) * 100 : 0
+
+  return {
+    totalSpent:        total,
+    itemsBought:       count,
+    averageSpend:      mean,
+    p25:               pct(25),
+    median:            pct(50),
+    p75:               pct(75),
+    stdDev,
+    avgWeeklySpend:    total / weekRange,
+    avgMonthlySpend,
+    avgYearlySpend,
+    spendingVolatility,
+  }
+}

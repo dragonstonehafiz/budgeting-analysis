@@ -1,146 +1,91 @@
-<template>
-  <div class="bar-chart-wrapper">
+﻿<template>
+  <div>
     <h3 v-if="title" class="chart-title">{{ title }}</h3>
-
-    <apexchart
-      type="bar"
-      :height="height"
-      :options="chartOptions"
-      :series="series"
-    />
+    <div :style="{ height: height + 'px', position: 'relative' }">
+      <Bar :data="chartData" :options="chartOptions" :plugins="chartPlugins" />
+    </div>
   </div>
 </template>
 
 <script setup>
 import { computed } from 'vue'
-import VueApexCharts from 'vue3-apexcharts'
+import { Bar } from 'vue-chartjs'
+import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, Tooltip, Legend } from 'chart.js'
 
-const apexchart = VueApexCharts
+ChartJS.register(CategoryScale, LinearScale, BarElement, Tooltip, Legend)
 
 const props = defineProps({
-  /**
-   * Slot-major series array from toTopItemsSeries():
-   *   [{ name: 'Purchase 1', data: [15, 60, 70] }, { name: 'Purchase 2', data: [15, 40, 0] }, ...]
-   */
-  series: {
-    type: Array,
-    required: true,
-  },
-
-  /**
-   * Item name labels for the y-axis, one per bar, largest total first.
-   * Matches positionally with every series[n].data array.
-   */
-  itemNames: {
-    type: Array,
-    required: true,
-  },
-
-  /**
-   * One hex color per item bar, derived from its dominant spending category.
-   * Matches positionally with itemNames.
-   */
-  itemColors: {
-    type: Array,
-    required: true,
-  },
-
-  /** Chart heading displayed above the chart */
-  title: {
-    type: String,
-    default: '',
-  },
-
-  /** Chart height in pixels */
-  height: {
-    type: Number,
-    default: 400,
-  },
-
-  /** Show the summed total label at the end of each bar */
-  showTotals: {
-    type: Boolean,
-    default: false,
-  },
+  series:     { type: Array,   required: true },
+  itemNames:  { type: Array,   required: true },
+  itemColors: { type: Array,   required: true },
+  title:      { type: String,  default: '' },
+  showTotals: { type: Boolean, default: false },
+  height:     { type: Number,  default: 400 },
 })
 
+const chartData = computed(() => ({
+  labels: props.itemNames,
+  datasets: props.series.map(s => ({
+    label:           s.name,
+    data:            s.data,
+    backgroundColor: props.itemColors,
+    borderWidth:     1,
+    borderColor:     '#fff',
+    borderSkipped:   false,
+  })),
+}))
+
+// Inline plugin: draw summed total at the right edge of each bar
+const totalsPlugin = {
+  id: 'barTotals',
+  afterDatasetsDraw(chart) {
+    if (!props.showTotals) return
+    const { ctx, scales } = chart
+    const totals = props.itemNames.map((_, i) =>
+      props.series.reduce((sum, s) => sum + (s.data[i] || 0), 0)
+    )
+    ctx.save()
+    ctx.font         = '600 11px sans-serif'
+    ctx.fillStyle    = '#444'
+    ctx.textAlign    = 'left'
+    ctx.textBaseline = 'middle'
+    totals.forEach((total, i) => {
+      const x = scales.x.getPixelForValue(total) + 4
+      const y = scales.y.getPixelForValue(i)
+      ctx.fillText(`$${total.toFixed(2)}`, x, y)
+    })
+    ctx.restore()
+  },
+}
+
+const chartPlugins = [totalsPlugin]
+
 const chartOptions = computed(() => ({
-  chart: {
-    type: 'bar',
-    stacked: true,
-    toolbar: { show: false },
-    animations: { enabled: false },
-    background: 'transparent',
-    redrawOnParentResize: false,
-    redrawOnWindowResize: false,
-  },
-  plotOptions: {
-    bar: {
-      horizontal: true,
-      barHeight: '60%',
-      dataLabels: {
-        position: 'top',
-        total: {
-          enabled: props.showTotals,
-          offsetX: 6,
-          style: { fontSize: '12px', fontWeight: 600, color: '#333' },
-          formatter: val =>
-            `$${Number(val).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
-        },
-      },
+  indexAxis: 'y',
+  responsive: true,
+  maintainAspectRatio: false,
+  animation: false,
+  plugins: {
+    legend: { display: false },
+    tooltip: {
+      callbacks: { label: ctx => ` $${ctx.parsed.x.toFixed(2)}` },
     },
   },
-  // Color every segment of a bar using that bar's item color.
-  // dataPointIndex = which item/bar (0 = first item, 1 = second, etc.)
-  colors: [({ dataPointIndex }) => props.itemColors[dataPointIndex] ?? '#D9D9D9'],
-  stroke: {
-    width: 2,
-    colors: ['#ffffff'],  // white dividers between segments
-  },
-  xaxis: {
-    categories: props.itemNames,
-    labels: {
-      formatter: val => `$${Number(val).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`,
+  scales: {
+    x: {
+      stacked: true,
+      ticks: { callback: v => `$${v.toLocaleString()}`, color: '#666' },
+      grid:  { color: 'rgba(0,0,0,0.05)' },
     },
-  },
-  yaxis: {
-    labels: {
-      maxWidth: 200,
-      style: { fontSize: '12px' },
-    },
-  },
-  dataLabels: {
-    enabled: false,
-  },
-  tooltip: {
-    shared: false,
-    x: { show: true },
     y: {
-      formatter: val =>
-        val === 0
-          ? null
-          : `$${Number(val).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+      stacked: true,
+      ticks: { color: '#555', font: { size: 12 } },
+      grid:  { display: false },
     },
-  },
-  legend: {
-    show: false,
-  },
-  grid: {
-    xaxis: { lines: { show: true } },
-    yaxis: { lines: { show: false } },
   },
 }))
 </script>
 
 <style scoped>
-.bar-chart-wrapper {
-  width: 100%;
-}
-
-.chart-title {
-  font-size: 1rem;
-  font-weight: 600;
-  color: #333;
-  margin: 0 0 0.5rem 0;
-}
+.chart-title { font-size: 0.95rem; font-weight: 600; color: #333; margin: 0 0 0.5rem; }
 </style>
