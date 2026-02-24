@@ -52,7 +52,7 @@ const totalsPlugin = {
     totals.forEach((total, i) => {
       const x = scales.x.getPixelForValue(total) + 4
       const y = scales.y.getPixelForValue(i)
-      ctx.fillText(`$${total.toFixed(2)}`, x, y)
+      ctx.fillText(`$${total.toLocaleString('en-AU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, x, y)
     })
     ctx.restore()
   },
@@ -68,13 +68,13 @@ const chartOptions = computed(() => ({
   plugins: {
     legend: { display: false },
     tooltip: {
-      callbacks: { label: ctx => ` $${ctx.parsed.x.toFixed(2)}` },
+      callbacks: { label: ctx => ` $${ctx.parsed.x.toLocaleString('en-AU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` },
     },
   },
   scales: {
     x: {
       stacked: true,
-      ticks: { callback: v => `$${v.toLocaleString()}`, color: '#666' },
+      ticks: { callback: v => `$${Number(v).toLocaleString('en-AU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, color: '#666' },
       grid:  { color: 'rgba(0,0,0,0.05)' },
     },
     y: {

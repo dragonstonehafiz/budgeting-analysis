@@ -131,7 +131,7 @@
                   {{ tx.Category }}
                 </span>
               </td>
-              <td class="col-cost">${{ tx.Cost.toFixed(2) }}</td>
+              <td class="col-cost">${{ tx.Cost.toLocaleString('en-AU', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }}</td>
               <td class="col-notes">{{ tx.Notes || '—' }}</td>
             </tr>
           </tbody>

@@ -78,8 +78,7 @@ const chartOptions = {
     legend: { display: false },
     tooltip: {
       callbacks: {
-        label: ctx => ` $${ctx.parsed.y?.toFixed(2) ?? ''}`,
-      },
+        label: ctx => ` $${ctx.parsed.y?.toLocaleString('en-AU', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) ?? ''}`,      },
     },
   },
   scales: {
@@ -90,7 +89,7 @@ const chartOptions = {
       ticks: { color: '#666', maxTicksLimit: 12 },
     },
     y: {
-      ticks: { callback: v => `$${v.toLocaleString()}`, color: '#666' },
+      ticks: { callback: v => `$${Number(v).toLocaleString('en-AU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, color: '#666' },
       grid: { color: 'rgba(0,0,0,0.05)' },
     },
   },
