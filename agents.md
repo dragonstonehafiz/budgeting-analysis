@@ -51,24 +51,34 @@ Raw transaction objects (as returned by `GET /transactions/`):
 }
 ```
 
+### Workbook Schema (for XLSX formatting tools)
+
+The Excel maintenance scripts/handlers now expect purchases sheet columns `A:H` in this order:
+`ID, Item, Category, Cost, Date, Store, Tags, Notes`.
+
+`backend/excel/handler.py` (`remake_xlsx_file`) and 
+`backend/excel/data_loader.py` now requires the full workbook schema columns:
+`ID, Item, Category, Cost, Date, Store, Tags, Notes`.
+`backend/routers/transactions.py` returns transaction rows in workbook order:
+`ID, Item, Category, Cost, Date, Store, Tags, Notes`.
+Year filtering/listing is computed from `Date` at request time.
+
 ---
 
 ## Repository Structure
 
 ```
 budgeting-analysis/
-├── backend/                  # Python side (FastAPI + original PySide6 code)
-│   ├── src/
-│   │   ├── qt_app.py         # Original PySide6 entry point (legacy)
-│   │   ├── pages/
-│   │   └── utils/
-│   │       ├── data_loader.py
-│   │       ├── plots.py      # Matplotlib charts being replaced by Vue
-│   │       ├── category_colors.py
-│   │       ├── xlsx_handler.py
-│   │       └── xlsx_formats.py
+├── backend/                  # Python side (FastAPI + Excel processing utilities)
 │   ├── data/                 # purchases.xlsx lives here (volume-mounted in Docker)
-│   ├── images/
+│   ├── excel/
+│   │   ├── data_loader.py
+│   │   ├── formats.py
+│   │   └── handler.py
+│   ├── routers/
+│   │   ├── transactions.py
+│   │   └── xlsx.py
+│   ├── server.py
 │   └── requirements.txt
 ├── frontend/                 # Vue 3 + Vite SPA
 │   ├── src/
@@ -84,6 +94,7 @@ budgeting-analysis/
 │   │   │   ├── FilterBar.vue        # Shared year-dropdown + optional search bar
 │   │   │   ├── NavBar.vue           # Sticky top navigation bar
 │   │   │   ├── StatCard.vue      # Reusable KPI stat card
+│   │   │   ├── TransactionsTable.vue # Reusable transactions table (Date/Item/Category/Cost/Store/Tags/Notes)
 │   │   │   └── charts/
 │   │   │       ├── LineChart.vue
 │   │   │       ├── DonutChart.vue
@@ -141,6 +152,7 @@ onMounted(() => initFilters())
 | `transactions` | `Ref<object[]>` | Year-filtered transactions from backend |
 | `loading` | `Ref<boolean>` | True while a fetch is in flight |
 | `initFilters()` | `async fn` | Call in `onMounted`; fetches years once and transactions if not yet loaded |
+| `refreshTransactions()` | `async fn` | Re-fetch transactions for the currently selected year (used after XLSX maintenance actions) |
 
 A `watch(selectedYear, ...)` inside the composable re-fetches transactions whenever the year changes, regardless of which page triggered the change.
 The Vite dev proxy rewrites `/api/*` → `http://localhost:8000/*`. Year filtering is done server-side.
@@ -173,6 +185,8 @@ Bucket-size buttons (1-day / 7-day / 28-day) sit beside the switcher and drive a
 - Spending by Month (`toMonthlyDonutSeries`, `topN=0`, `showLegend=true`)
 
 **Bottom sections:** `HorizontalBarChart` (top 10 items) + sortable top-10 transactions table.
+The transaction table is rendered via `TransactionsTable.vue` and includes:
+Date, Item, Category, Cost, Store, Tags, Notes.
 
 ---
 
@@ -187,7 +201,8 @@ Controls at top: **Year** toggle buttons.
 **Section 2 — Drill-down:** Category `<select>` dropdown.
 When a specific category is selected, shows:
 - `HorizontalBarChart` — top 10 items in that category
-- Top-10 transactions table for that category
+- Top-10 transactions table for that category (`TransactionsTable.vue`) with
+  Date, Item, Category, Cost, Store, Tags, Notes columns
 
 ---
 
@@ -197,6 +212,7 @@ When a specific category is selected, shows:
 `frontend/src/components/FilterBar.vue`
 
 Shared controls bar used at the top of every page. Reads directly from `useGlobalFilters` — no props needed for data.
+Includes a **Remake XLSX** button that sends `POST /api/xlsx/reformat` (via Vite `/api` proxy) and refreshes transactions on success.
 
 **Props**
 
@@ -242,6 +258,28 @@ Reusable KPI display card.
 <StatCard label="Items Bought"        :value="stats.itemsBought" format="integer" />
 <StatCard label="Spending Volatility" :value="stats.volatility"  format="percent" />
 ```
+
+---
+
+### TransactionsTable.vue
+`frontend/src/components/TransactionsTable.vue`
+
+Reusable transaction table wrapper used by Home and Category pages.
+Renders columns:
+- Date
+- Item
+- Category (colored badge)
+- Cost
+- Store
+- Tags
+- Notes
+
+**Props**
+
+| Prop | Type | Default | Description |
+|------|------|---------|-------------|
+| `title` | String | `'Transactions'` | Section title shown above the table |
+| `transactions` | Array | required | Transaction rows to render |
 
 ---
 

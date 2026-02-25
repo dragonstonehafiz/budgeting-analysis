@@ -5,6 +5,13 @@
       <select v-model="selectedYear" class="year-select">
         <option v-for="y in availableYears" :key="y" :value="y">{{ y }}</option>
       </select>
+      <button
+        class="remake-btn"
+        :disabled="remaking"
+        @click="handleRemakeXlsx"
+      >
+        {{ remaking ? 'Remaking…' : 'Remake XLSX' }}
+      </button>
     </div>
     <div v-if="showSearch" class="filter-right">
       <input
@@ -14,17 +21,42 @@
         type="search"
       />
     </div>
+    <p v-if="remakeMessage" class="remake-message">{{ remakeMessage }}</p>
   </div>
 </template>
 
 <script setup>
+import { ref } from 'vue'
 import { useGlobalFilters } from '../composables/useGlobalFilters.js'
 
 defineProps({
   showSearch: { type: Boolean, default: false },
 })
 
-const { availableYears, selectedYear, search } = useGlobalFilters()
+const { availableYears, selectedYear, search, refreshTransactions } = useGlobalFilters()
+const remaking = ref(false)
+const remakeMessage = ref('')
+
+async function handleRemakeXlsx() {
+  remaking.value = true
+  remakeMessage.value = ''
+
+  try {
+    const response = await fetch('/api/xlsx/reformat', { method: 'POST' })
+    const data = await response.json()
+
+    if (!response.ok) {
+      throw new Error(data?.detail || 'Failed to remake XLSX file.')
+    }
+
+    await refreshTransactions()
+    remakeMessage.value = data?.message || 'XLSX remake completed.'
+  } catch (error) {
+    remakeMessage.value = error?.message || 'Failed to remake XLSX file.'
+  } finally {
+    remaking.value = false
+  }
+}
 </script>
 
 <style scoped>
@@ -62,4 +94,27 @@ const { availableYears, selectedYear, search } = useGlobalFilters()
   transition: border-color 0.15s;
 }
 .search-input:focus { border-color: #1a1a2e; }
+
+.remake-btn {
+  padding: 0.35rem 0.75rem;
+  border: 1px solid #1e293b;
+  border-radius: 5px;
+  background: #1e293b;
+  color: #fff;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 0.15s ease;
+}
+.remake-btn:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
+.remake-message {
+  margin: 0;
+  font-size: 0.8rem;
+  color: #555;
+  flex-basis: 100%;
+}
 </style>

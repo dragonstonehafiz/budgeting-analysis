@@ -25,34 +25,10 @@
           :height="380"
         />
 
-        <!-- top 10 transactions table -->
-        <h3 class="sub-title">Top 10 Most Expensive Transactions</h3>
-        <div class="table-wrapper">
-          <table class="data-table">
-            <thead>
-              <tr>
-                <th>Date</th>
-                <th>Item</th>
-                <th>Category</th>
-                <th class="col-cost">Cost</th>
-                <th>Notes</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr v-for="(tx, i) in top10ByCategory" :key="i">
-                <td>{{ tx.Date }}</td>
-                <td>{{ tx.Item }}</td>
-                <td>
-                  <span class="category-badge" :style="{ background: getCategoryColor(tx.Category) }">
-                    {{ tx.Category }}
-                  </span>
-                </td>
-                <td class="col-cost">${{ tx.Cost.toLocaleString('en-AU', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }}</td>
-                <td class="col-notes">{{ tx.Notes || '—' }}</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
+        <TransactionsTable
+          title="Top 10 Most Expensive Transactions"
+          :transactions="top10ByCategory"
+        />
       </template>
 
       <div v-else class="empty-state">
@@ -66,9 +42,9 @@
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue'
 import HorizontalBarChart from '../components/charts/HorizontalBarChart.vue'
+import TransactionsTable from '../components/TransactionsTable.vue'
 import {
   toTopItemsSeries,
-  getCategoryColor,
 } from '../composables/useChartData.js'
 import FilterBar          from '../components/FilterBar.vue'
 import { useGlobalFilters } from '../composables/useGlobalFilters.js'
@@ -135,7 +111,6 @@ const top10ByCategory = computed(() =>
 
 .section-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.5rem; }
 .section-title  { font-size: 1rem; font-weight: 700; color: #333; margin: 0 0 1rem; }
-.sub-title      { font-size: 0.95rem; font-weight: 700; color: #444; margin: 1.5rem 0 0.75rem; }
 
 /* ── Drill controls ──────────────────────────────── */
 .drill-controls {
@@ -167,40 +142,4 @@ const top10ByCategory = computed(() =>
   font-style: italic;
 }
 
-/* ── Table ───────────────────────────────────────── */
-.table-wrapper { overflow-x: auto; }
-
-.data-table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 0.85rem;
-}
-.data-table th {
-  text-align: left;
-  padding: 0.6rem 0.75rem;
-  background: #f5f5f5;
-  border-bottom: 2px solid #e0e0e0;
-  font-size: 0.75rem;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  color: #666;
-}
-.data-table td {
-  padding: 0.55rem 0.75rem;
-  border-bottom: 1px solid #f0f0f0;
-  vertical-align: middle;
-}
-.data-table tbody tr:hover { background: #fafafa; }
-.col-cost  { text-align: right; font-weight: 600; font-variant-numeric: tabular-nums; }
-.col-notes { color: #888; font-style: italic; max-width: 200px; }
-
-.category-badge {
-  display: inline-block;
-  padding: 0.15rem 0.55rem;
-  border-radius: 12px;
-  font-size: 0.75rem;
-  font-weight: 500;
-  color: rgba(0, 0, 0, 0.7);
-  white-space: nowrap;
-}
 </style>

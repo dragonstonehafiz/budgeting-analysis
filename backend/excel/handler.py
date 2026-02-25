@@ -1,4 +1,3 @@
-import calendar
 import datetime
 import openpyxl
 try:
@@ -89,16 +88,16 @@ def remake_xlsx_file(xlsx_path: str = "data/purchases.xlsx") -> None:
         if cell.value:
             headers[str(cell.value).strip()] = letter
 
-    # If expected headers are absent, we'll initialize columns A-H using defaults similar to the script
+    # If expected headers are absent, we'll initialize columns A-H using the new layout
     default_cols = {
-        "Item": ["A", 15],
-        "Category": ["B", 15],
-        "Cost": ["C", 10],
-        "Date": ["D", 12],
-        "Notes": ["E", 15],
-        "Month": ["F", 12],
-        "MonthNum": ["G", 5],
-        "Year": ["H", 10]
+        "ID": ["A", 8],
+        "Item": ["B", 15],
+        "Category": ["C", 15],
+        "Cost": ["D", 10],
+        "Date": ["E", 12],
+        "Store": ["F", 15],
+        "Tags": ["G", 12],
+        "Notes": ["H", 15],
     }
 
     # Ensure these headers exist in the sheet; xlsx_init_column will set header cell values
@@ -112,8 +111,8 @@ def remake_xlsx_file(xlsx_path: str = "data/purchases.xlsx") -> None:
     max_row = ws.max_row
     # read values for all columns currently used (we'll keep the full row as a list)
     for r in range(2, max_row + 1):
-        # Determine if the row is empty by checking the Item column (A)
-        item_cell = ws[f"A{r}"]
+        # Determine if the row is empty by checking the Item column (B)
+        item_cell = ws[f"{cols.get('Item')[0]}{r}"]
         if item_cell.value is None:
             continue
         row_values = []
@@ -189,9 +188,9 @@ def remake_xlsx_file(xlsx_path: str = "data/purchases.xlsx") -> None:
     except Exception:
         pass
 
-    # Recreate category DV and CF using column B
-    xlsx_create_category_dv(ws, "B")
-    xlsx_create_category_cf(ws, "B")
+    # Recreate category DV and CF using column C
+    xlsx_create_category_dv(ws, cols.get("Category")[0])
+    xlsx_create_category_cf(ws, cols.get("Category")[0])
 
     # Apply row formatting based on our cols mapping
     xlsx_format_rows(ws, cols)
@@ -236,7 +235,6 @@ def xlsx_format_rows(ws: Worksheet, cols: dict):
             if date_value is not None:
                 try:
                     month = date_value.month
-                    year = date_value.year
                     fill = FILL_WHITE if month % 2 == 0 else FILL_GREY
                 except AttributeError:
                     # date_value is not a datetime object
@@ -263,26 +261,15 @@ def xlsx_format_rows(ws: Worksheet, cols: dict):
             cell.fill = fill
             cell.alignment = ALIGN_CENTER 
             
-            if col == "Item":
+            if col in ("Item", "Store", "Tags", "Notes"):
                 cell.alignment = ALIGN_LEFT
-            elif col == "Notes":
-                cell.alignment = ALIGN_LEFT
-            elif col == "Category":
-                pass
             elif col == "Cost":
                 cell.number_format = FORMAT_MONEY
             elif col == "Date":
                 cell.number_format = FORMAT_DATE
-            elif not is_empty:
-                if col == "Month":
-                    cell.value = calendar.month_name[month]
-                elif col == "MonthNum":
-                    cell.value = month
-                elif col == "Year":
-                    cell.value = year
                 
 
-def xlsx_create_category_dv(ws: Worksheet, category_col: str = "B"):
+def xlsx_create_category_dv(ws: Worksheet, category_col: str = "C"):
     # Create a string for the formula (must be double-quoted and comma-separated)
     category_list = '"' + ",".join(CATEGORIES) + '"'
 
@@ -292,17 +279,17 @@ def xlsx_create_category_dv(ws: Worksheet, category_col: str = "B"):
     # Add the DataValidation to the worksheet
     ws.add_data_validation(dv)
 
-    # Apply it to B2:B<max_row>
+    # Apply it to Category column rows 2..(max_row*2)
     dv.add(f"{category_col}2:{category_col}{(int)(ws.max_row*2)}")
     
 
-def xlsx_create_category_cf(ws: Worksheet, category_col: str = "B"):
+def xlsx_create_category_cf(ws: Worksheet, category_col: str = "C"):
     # Apply conditional formatting based on FILL_MAP
     for category_name, pattern_fill in FILL_MAP.items():
         color = pattern_fill.fgColor.rgb  # Get RGB value
 
         # Create a formula rule
-        formula = f'$B2="{category_name}"'  # Important: Lock column B, but row can move
+        formula = f'${category_col}2="{category_name}"'  # Lock category column, row can move
         rule = FormulaRule(formula=[formula], stopIfTrue=True, fill=PatternFill(start_color=color, end_color=color, fill_type="solid"))
 
         # Add the rule to the worksheet

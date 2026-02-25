@@ -56,6 +56,10 @@ async function initFilters() {
 // Re-fetch whenever the year changes — fires regardless of which page triggered it
 watch(selectedYear, (year) => fetchTransactions(year))
 
+async function refreshTransactions() {
+  await fetchTransactions(selectedYear.value)
+}
+
 // ── Public API ─────────────────────────────────────────────────────────────
 export function useGlobalFilters() {
   return {
@@ -65,5 +69,6 @@ export function useGlobalFilters() {
     transactions,
     loading,
     initFilters,
+    refreshTransactions,
   }
 }
