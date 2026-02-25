@@ -71,6 +71,8 @@ Frontend:
 - Filter bar `Remake XLSX` button must call `POST /api/xlsx/reformat`.
 - After remake succeeds, frontend should refresh transactions.
 - Transactions tables should include: Date, Item, Category, Cost, Store, Tags, Notes.
+- Search filtering should match `Item` and `Notes` fields only.
+- Filter bar should include a tags multi-select; selecting multiple tags must apply OR matching against comma-separated `Tags` values.
 - Frontend route `/settings` should list unique stores from `/api/transactions/` and show mapped store icons when available.
 
 ## Safety Rules

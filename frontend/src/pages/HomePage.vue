@@ -139,7 +139,7 @@ import {
 import FilterBar          from '../components/FilterBar.vue'
 import { useGlobalFilters } from '../composables/useGlobalFilters.js'
 
-const { availableYears, selectedYear, search, transactions, loading, initFilters } = useGlobalFilters()
+const { availableYears, selectedYear, search, selectedTags, transactions, loading, initFilters } = useGlobalFilters()
 
 onMounted(() => initFilters())
 
@@ -158,13 +158,27 @@ const bucketOptions = [
 ]
 const bucketDays = ref(28)
 
+function parseTags(tags) {
+  if (!tags || typeof tags !== 'string') return []
+  return tags
+    .split(',')
+    .map((tag) => tag.trim().toLowerCase())
+    .filter(Boolean)
+}
+
 // ── Filtered transactions (drives all charts + stats) ─────────────────────
 const filteredTransactions = computed(() => {
   let txs = transactions.value
   const q = search.value.trim().toLowerCase()
   if (q) txs = txs.filter(t =>
-    t.Item.toLowerCase().includes(q) || t.Category.toLowerCase().includes(q)
+    t.Item.toLowerCase().includes(q) || String(t.Notes || '').toLowerCase().includes(q)
   )
+  if (selectedTags.value.length) {
+    txs = txs.filter((t) => {
+      const txTags = parseTags(t.Tags)
+      return txTags.some((tag) => selectedTags.value.includes(tag))
+    })
+  }
   return txs
 })
 

@@ -15,6 +15,7 @@ import { ref, watch } from 'vue'
 const availableYears = ref(['All'])
 const selectedYear   = ref('All')
 const search         = ref('')
+const selectedTags   = ref([])
 const transactions   = ref([])
 const loading        = ref(false)
 
@@ -66,6 +67,7 @@ export function useGlobalFilters() {
     availableYears,
     selectedYear,
     search,
+    selectedTags,
     transactions,
     loading,
     initFilters,

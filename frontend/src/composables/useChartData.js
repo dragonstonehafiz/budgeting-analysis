@@ -52,6 +52,8 @@ export function bucketTransactions(transactions, bucketDays = 28) {
   const MS_PER_DAY = 86_400_000
   const bucketMs = bucketDays * MS_PER_DAY
   const map = new Map()
+  let minBucketKey = null
+  let maxBucketKey = null
 
   for (const tx of transactions) {
     const date = new Date(tx.Date)
@@ -62,11 +64,17 @@ export function bucketTransactions(transactions, bucketDays = 28) {
     // Floor to the nearest bucket boundary (from Unix epoch)
     const bucketKey = Math.floor(date.getTime() / bucketMs) * bucketMs
     map.set(bucketKey, (map.get(bucketKey) ?? 0) + cost)
+    minBucketKey = minBucketKey == null ? bucketKey : Math.min(minBucketKey, bucketKey)
+    maxBucketKey = maxBucketKey == null ? bucketKey : Math.max(maxBucketKey, bucketKey)
   }
 
-  return Array.from(map.entries())
-    .sort(([a], [b]) => a - b)
-    .map(([x, y]) => ({ x, y }))
+  if (minBucketKey == null || maxBucketKey == null) return []
+
+  const points = []
+  for (let bucketKey = minBucketKey; bucketKey <= maxBucketKey; bucketKey += bucketMs) {
+    points.push({ x: bucketKey, y: map.get(bucketKey) ?? 0 })
+  }
+  return points
 }
 
 /**
