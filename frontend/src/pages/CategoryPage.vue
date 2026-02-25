@@ -2,20 +2,7 @@
   <div class="page-container">
 
     <!-- ── Controls bar ─────────────────────────────────────────── -->
-    <div class="controls-bar">
-      <div class="controls-left">
-        <label class="control-label">Year</label>
-        <div class="btn-group">
-          <button
-            v-for="y in availableYears"
-            :key="y"
-            class="btn"
-            :class="{ 'btn--active': selectedYear === y }"
-            @click="selectedYear = y"
-          >{{ y }}</button>
-        </div>
-      </div>
-    </div>
+    <FilterBar :showSearch="true" />
 
     <!-- ── Category overview donut ───────────────────────────────── -->
     <section class="chart-section">
@@ -90,7 +77,7 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import DonutChart         from '../components/charts/DonutChart.vue'
 import HorizontalBarChart from '../components/charts/HorizontalBarChart.vue'
 import {
@@ -98,20 +85,22 @@ import {
   toTopItemsSeries,
   getCategoryColor,
 } from '../composables/useChartData.js'
-import { MOCK_TRANSACTIONS } from '../data/mockTransactions.js'
+import FilterBar          from '../components/FilterBar.vue'
+import { useGlobalFilters } from '../composables/useGlobalFilters.js'
 
-// ── Year filter ────────────────────────────────────────────────────────────
-const availableYears = ['All', ...new Set(MOCK_TRANSACTIONS.map(t => String(t.Year || t.Date.slice(0, 4)))).values()].sort()
-const selectedYear   = ref('All')
+const { availableYears, selectedYear, search, transactions, loading, initFilters } = useGlobalFilters()
+
+onMounted(() => initFilters())
 
 // ── Category filter ────────────────────────────────────────────────────────
 const selectedCategory = ref('All')
 
-// ── Transactions filtered by year ─────────────────────────────────────────
+// ── Transactions filtered by year + search (backend handles year) ────────
 const yearFiltered = computed(() => {
-  if (selectedYear.value === 'All') return MOCK_TRANSACTIONS
-  return MOCK_TRANSACTIONS.filter(t =>
-    (t.Year ?? t.Date.slice(0, 4)) == selectedYear.value
+  const q = search.value.trim().toLowerCase()
+  if (!q) return transactions.value
+  return transactions.value.filter(t =>
+    t.Item.toLowerCase().includes(q) || t.Category.toLowerCase().includes(q)
   )
 })
 
@@ -144,38 +133,6 @@ const top10ByCategory = computed(() =>
   max-width: 1300px;
   margin: 0 auto;
   padding: 1.5rem 2rem 3rem;
-}
-
-/* ── Controls bar ────────────────────────────────── */
-.controls-bar {
-  display: flex;
-  align-items: center;
-  gap: 1.5rem;
-  margin-bottom: 1.5rem;
-  flex-wrap: wrap;
-}
-.controls-left { display: flex; align-items: center; gap: 0.75rem; }
-.control-label { font-size: 0.8rem; font-weight: 600; color: #666; text-transform: uppercase; }
-
-/* ── Buttons ─────────────────────────────────────── */
-.btn-group { display: flex; gap: 0.3rem; flex-wrap: wrap; }
-
-.btn {
-  padding: 0.35rem 0.85rem;
-  border: 1px solid #ccc;
-  border-radius: 5px;
-  background: #fff;
-  color: #555;
-  font-size: 0.85rem;
-  cursor: pointer;
-  transition: background 0.12s, color 0.12s, border-color 0.12s;
-}
-.btn:hover { background: #f0f0f0; }
-.btn--active {
-  background: #1e293b;
-  color: #fff;
-  border-color: #1e293b;
-  font-weight: 600;
 }
 
 /* ── Chart sections ──────────────────────────────── */

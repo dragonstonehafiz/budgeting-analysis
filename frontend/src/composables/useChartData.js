@@ -83,61 +83,6 @@ export function toSpendingSeries(transactions, bucketDays = 28) {
 }
 
 /**
- * Returns series for the Rolling Average chart:
- *   - 'Raw' series: bucketed points (rendered as scatter dots)
- *   - 'Rolling Average' series: rolling mean over `window` buckets
- *   - 'Band' series: rangeArea between mean±std for volatility shading
- *
- * @param {Array}  transactions
- * @param {number} window     - number of buckets to include in each rolling window
- * @param {number} bucketDays
- * @returns {Array} ApexCharts series array (3 series)
- */
-export function toRollingSeries(transactions, window = 3, bucketDays = 28) {
-  const bucketed = bucketTransactions(transactions, bucketDays)
-  if (bucketed.length === 0) return []
-
-  const values = bucketed.map(p => p.y)
-
-  const rollingMean = values.map((_, i) => {
-    const slice = values.slice(Math.max(0, i - window + 1), i + 1)
-    return slice.reduce((a, b) => a + b, 0) / slice.length
-  })
-
-  const rollingStd = values.map((_, i) => {
-    const slice = values.slice(Math.max(0, i - window + 1), i + 1)
-    if (slice.length < 2) return 0
-    const mean = slice.reduce((a, b) => a + b, 0) / slice.length
-    const variance = slice.reduce((a, b) => a + (b - mean) ** 2, 0) / slice.length
-    return Math.sqrt(variance)
-  })
-
-  return [
-    {
-      name: 'Raw',
-      type: 'scatter',
-      data: bucketed.map((p, i) => ({ x: p.x, y: parseFloat(values[i].toFixed(2)) })),
-    },
-    {
-      name: 'Rolling Average',
-      type: 'line',
-      data: bucketed.map((p, i) => ({ x: p.x, y: parseFloat(rollingMean[i].toFixed(2)) })),
-    },
-    {
-      name: 'Volatility Band',
-      type: 'rangeArea',
-      data: bucketed.map((p, i) => ({
-        x: p.x,
-        y: [
-          parseFloat(Math.max(0, rollingMean[i] - rollingStd[i]).toFixed(2)),
-          parseFloat((rollingMean[i] + rollingStd[i]).toFixed(2)),
-        ],
-      })),
-    },
-  ]
-}
-
-/**
  * Returns a single cumulative spending series.
  * Each point's y-value is the running total of all spend up to that bucket.
  *
@@ -168,6 +113,52 @@ export function computeAverage(transactions, bucketDays = 28) {
   if (bucketed.length === 0) return 0
   const total = bucketed.reduce((sum, p) => sum + p.y, 0)
   return total / bucketed.length
+}
+
+/**
+ * Returns one bucketed line series per category, each carrying its preset color.
+ * Series are sorted by total spend descending.
+ *
+ * @param {Array}  transactions
+ * @param {number} bucketDays
+ * @returns {Array<{name: string, color: string, data: {x: number, y: number}[]}>}
+ */
+export function toCategorySpendingSeries(transactions, bucketDays = 28) {
+  if (!transactions || transactions.length === 0) return []
+
+  // Group raw transactions by category first
+  const catMap = new Map()
+  for (const tx of transactions) {
+    const cat = tx.Category || 'Miscellaneous'
+    if (!catMap.has(cat)) catMap.set(cat, [])
+    catMap.get(cat).push(tx)
+  }
+
+  const rawSeries = []
+  for (const [cat, txs] of catMap.entries()) {
+    const data = bucketTransactions(txs, bucketDays)
+    if (data.length === 0) continue
+    rawSeries.push({ name: cat, color: getCategoryColor(cat), data })
+  }
+
+  // Build a union of all x timestamps so we can insert null where a category
+  // has no data — Chart.js then breaks the line instead of drawing across the gap
+  const allTimestamps = [
+    ...new Set(rawSeries.flatMap(s => s.data.map(p => p.x))),
+  ].sort((a, b) => a - b)
+
+  const series = rawSeries.map(s => {
+    const pointMap = new Map(s.data.map(p => [p.x, p.y]))
+    const data = allTimestamps.map(x => ({ x, y: pointMap.has(x) ? pointMap.get(x) : 0 }))
+    return { ...s, data }
+  })
+
+  // Sort by total spend descending so the biggest category is listed first
+  return series.sort((a, b) => {
+    const sumA = a.data.reduce((s, p) => s + (p.y ?? 0), 0)
+    const sumB = b.data.reduce((s, p) => s + (p.y ?? 0), 0)
+    return sumB - sumA
+  })
 }
 
 // ---------------------------------------------------------------------------

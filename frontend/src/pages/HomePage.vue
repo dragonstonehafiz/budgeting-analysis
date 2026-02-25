@@ -2,28 +2,7 @@
   <div class="page-container">
 
     <!-- ── Controls bar ─────────────────────────────────────────── -->
-    <div class="controls-bar">
-      <div class="controls-left">
-        <label class="control-label">Year</label>
-        <div class="btn-group">
-          <button
-            v-for="y in availableYears"
-            :key="y"
-            class="btn"
-            :class="{ 'btn--active': selectedYear === y }"
-            @click="selectedYear = y"
-          >{{ y }}</button>
-        </div>
-      </div>
-      <div class="controls-right">
-        <input
-          v-model="search"
-          class="search-input"
-          placeholder="Search item or category…"
-          type="search"
-        />
-      </div>
-    </div>
+    <FilterBar :showSearch="true" />
 
     <!-- ── KPI Cards ─────────────────────────────────────────────── -->
     <section class="kpi-section">
@@ -82,17 +61,17 @@
         :height="340"
       />
       <LineChart
-        v-else-if="activeChart === 'rolling'"
-        :series="rollingSeries"
-        title="3-Period Rolling Average"
-        caption="Line = rolling average  ·  Shaded band = ±1 SD volatility"
-        :height="340"
-      />
-      <LineChart
         v-else-if="activeChart === 'cumulative'"
         :series="cumulativeSeries"
         title="Cumulative Spending"
         :height="340"
+      />
+      <LineChart
+        v-else-if="activeChart === 'category'"
+        :series="categorySeries"
+        title="Spending by Category"
+        :showLegend="true"
+        :height="380"
       />
     </section>
 
@@ -143,32 +122,30 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import LineChart           from '../components/charts/LineChart.vue'
 import HorizontalBarChart  from '../components/charts/HorizontalBarChart.vue'
 import StatCard            from '../components/StatCard.vue'
 import {
   toSpendingSeries,
-  toRollingSeries,
   toCumulativeSeries,
+  toCategorySpendingSeries,
   computeAverage,
   toTopItemsSeries,
   computeStats,
   getCategoryColor,
 } from '../composables/useChartData.js'
-import { MOCK_TRANSACTIONS } from '../data/mockTransactions.js'
+import FilterBar          from '../components/FilterBar.vue'
+import { useGlobalFilters } from '../composables/useGlobalFilters.js'
 
-// ── Year filter ────────────────────────────────────────────────────────────
-const availableYears = ['All', ...new Set(MOCK_TRANSACTIONS.map(t => String(t.Year || t.Date.slice(0, 4)))).values()].sort()
-const selectedYear   = ref('All')
+const { availableYears, selectedYear, search, transactions, loading, initFilters } = useGlobalFilters()
 
-// ── Search filter ──────────────────────────────────────────────────────────
-const search = ref('')
+onMounted(() => initFilters())
 
 // ── Chart controls ─────────────────────────────────────────────────────────
 const chartOptions = [
   { key: 'trend',      label: 'Monthly Trend' },
-  { key: 'rolling',    label: 'Rolling Average' },
+  { key: 'category',   label: 'By Category' },
   { key: 'cumulative', label: 'Cumulative' },
 ]
 const activeChart = ref('trend')
@@ -182,10 +159,7 @@ const bucketDays = ref(28)
 
 // ── Filtered transactions (drives all charts + stats) ─────────────────────
 const filteredTransactions = computed(() => {
-  let txs = selectedYear.value === 'All'
-    ? MOCK_TRANSACTIONS
-    : MOCK_TRANSACTIONS.filter(t => (t.Year ?? t.Date.slice(0, 4)) == selectedYear.value)
-
+  let txs = transactions.value
   const q = search.value.trim().toLowerCase()
   if (q) txs = txs.filter(t =>
     t.Item.toLowerCase().includes(q) || t.Category.toLowerCase().includes(q)
@@ -197,10 +171,10 @@ const filteredTransactions = computed(() => {
 const stats = computed(() => computeStats(filteredTransactions.value))
 
 // ── Line chart series (only compute the active chart) ────────────────────
-const spendingSeries   = computed(() => activeChart.value !== 'trend'      ? [] : toSpendingSeries(filteredTransactions.value,  bucketDays.value))
-const spendingAverage  = computed(() => activeChart.value !== 'trend'      ? 0  : computeAverage(filteredTransactions.value,    bucketDays.value))
-const rollingSeries    = computed(() => activeChart.value !== 'rolling'    ? [] : toRollingSeries(filteredTransactions.value, 3, bucketDays.value))
-const cumulativeSeries = computed(() => activeChart.value !== 'cumulative' ? [] : toCumulativeSeries(filteredTransactions.value, bucketDays.value))
+const spendingSeries    = computed(() => activeChart.value !== 'trend'      ? [] : toSpendingSeries(filteredTransactions.value, bucketDays.value))
+const spendingAverage   = computed(() => activeChart.value !== 'trend'      ? 0  : computeAverage(filteredTransactions.value,   bucketDays.value))
+const cumulativeSeries  = computed(() => activeChart.value !== 'cumulative' ? [] : toCumulativeSeries(filteredTransactions.value, bucketDays.value))
+const categorySeries    = computed(() => activeChart.value !== 'category'   ? [] : toCategorySpendingSeries(filteredTransactions.value, bucketDays.value))
 
 // ── Bar chart & table ──────────────────────────────────────────────────────
 const topItems = computed(() => toTopItemsSeries(filteredTransactions.value, 10))
@@ -219,19 +193,7 @@ const top10Transactions = computed(() =>
   padding: 1.5rem 2rem 3rem;
 }
 
-/* ── Controls bar ────────────────────────────────── */
-.controls-bar {
-  display: flex;
-  align-items: center;
-  gap: 1.5rem;
-  margin-bottom: 1.5rem;
-  flex-wrap: wrap;
-}
-.controls-left  { display: flex; align-items: center; gap: 0.75rem; }
-.controls-right { display: flex; align-items: center; margin-left: auto; }
-.control-label  { font-size: 0.8rem; font-weight: 600; color: #666; text-transform: uppercase; }
-
-/* ── Buttons ─────────────────────────────────────── */
+/* ── KPI cards ───────────────────────────────────── */
 .btn-group { display: flex; gap: 0.3rem; flex-wrap: wrap; }
 
 .btn {
@@ -253,19 +215,7 @@ const top10Transactions = computed(() =>
 }
 .btn--sm { padding: 0.25rem 0.65rem; font-size: 0.78rem; }
 
-/* ── Search ──────────────────────────────────────── */
-.search-input {
-  padding: 0.4rem 0.8rem;
-  border: 1px solid #ccc;
-  border-radius: 5px;
-  font-size: 0.85rem;
-  width: 240px;
-  outline: none;
-  transition: border-color 0.15s;
-}
-.search-input:focus { border-color: #1a1a2e; }
-
-/* ── KPI cards ───────────────────────────────────── */
+/* ── Buttons ─────────────────────────────────────── */
 .kpi-section { display: flex; flex-direction: column; gap: 0.75rem; margin-bottom: 2rem; }
 
 .kpi-row {
