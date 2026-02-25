@@ -2,9 +2,9 @@ import calendar
 import datetime
 import openpyxl
 try:
-    from xlsx_formats import *
+    from formats import *
 except ModuleNotFoundError:
-    from utils.xlsx_formats import *
+    from excel.formats import *
     
 from openpyxl.worksheet.datavalidation import DataValidation
 from openpyxl.worksheet.worksheet import Worksheet
