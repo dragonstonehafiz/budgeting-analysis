@@ -24,8 +24,27 @@
               </span>
             </td>
             <td class="col-cost">${{ Number(tx.Cost).toLocaleString('en-AU', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }}</td>
-            <td>{{ tx.Store || '—' }}</td>
-            <td>{{ tx.Tags || '—' }}</td>
+            <td class="col-store">
+              <div v-if="getStoreDisplayName(tx.Store)" class="store-cell">
+                <img
+                  v-if="getStoreIcon(tx.Store)"
+                  :src="getStoreIcon(tx.Store)"
+                  :alt="getStoreDisplayName(tx.Store)"
+                  :title="getStoreDisplayName(tx.Store)"
+                  class="store-icon"
+                />
+                <span v-else>{{ getStoreDisplayName(tx.Store) }}</span>
+              </div>
+              <span v-else>—</span>
+            </td>
+            <td>
+              <div v-if="hasTags(tx.Tags)" class="tags-list">
+                <span v-for="tag in parseTags(tx.Tags)" :key="`${tx.ID}-${tag}`" class="tag-chip">
+                  {{ tag }}
+                </span>
+              </div>
+              <span v-else>—</span>
+            </td>
             <td class="col-notes">{{ tx.Notes || '—' }}</td>
           </tr>
         </tbody>
@@ -36,11 +55,29 @@
 
 <script setup>
 import { getCategoryColor } from '../composables/useChartData.js'
+import { getStoreIcon } from '../config/storeIcons.js'
 
 defineProps({
   title: { type: String, default: 'Transactions' },
   transactions: { type: Array, required: true },
 })
+
+function parseTags(tags) {
+  if (!tags || typeof tags !== 'string') return []
+  return tags
+    .split(',')
+    .map((tag) => tag.trim())
+    .filter(Boolean)
+}
+
+function hasTags(tags) {
+  return parseTags(tags).length > 0
+}
+
+function getStoreDisplayName(store) {
+  const rawStore = String(store || '').trim()
+  return rawStore || null
+}
 </script>
 
 <style scoped>
@@ -83,8 +120,9 @@ defineProps({
   vertical-align: middle;
 }
 .data-table tbody tr:hover { background: #fafafa; }
-.col-cost  { text-align: right; font-weight: 600; font-variant-numeric: tabular-nums; }
+.col-cost  { text-align: center; font-weight: 600; font-variant-numeric: tabular-nums; }
 .col-notes { color: #888; font-style: italic; max-width: 220px; }
+.col-store { text-align: center; }
 
 .category-badge {
   display: inline-block;
@@ -94,5 +132,36 @@ defineProps({
   font-weight: 500;
   color: rgba(0, 0, 0, 0.7);
   white-space: nowrap;
+}
+
+.tags-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.tag-chip {
+  display: inline-block;
+  background: #eef2f7;
+  border: 1px solid #d7dde8;
+  color: #44506a;
+  border-radius: 999px;
+  padding: 0.1rem 0.5rem;
+  font-size: 0.72rem;
+  white-space: nowrap;
+}
+
+.store-cell {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 1.4rem;
+  width: 100%;
+}
+
+.store-icon {
+  width: 1.8rem;
+  height: 1.8rem;
+  object-fit: contain;
 }
 </style>

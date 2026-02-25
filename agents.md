@@ -11,6 +11,7 @@ Purpose: concise instructions for AI/code agents working in this repo.
 - Do preserve existing project patterns (FastAPI routers + Vue pages/components/composables).
 - Do validate changes with the most relevant local checks.
 - Do prioritize the current agreed contract; backward compatibility is not required unless explicitly requested.
+- Do keep private one-off scripts under `backend/data` undocumented in this file unless explicitly requested.
 - Don't rewrite architecture unless explicitly asked.
 - Don't add new dependencies unless required.
 - Don't silently change API/data contracts.
@@ -60,19 +61,24 @@ Frontend:
 - `frontend/src/composables/useGlobalFilters.js` — shared year/search/transactions state
 - `frontend/src/components/FilterBar.vue` — year/search + Remake XLSX button
 - `frontend/src/components/TransactionsTable.vue` — shared transactions table
+- `frontend/src/config/storeIcons.js` — normalized store-name to icon mapping
 - `frontend/src/composables/useChartData.js` — chart data transforms
 - `frontend/src/pages/HomePage.vue`
 - `frontend/src/pages/CategoryPage.vue`
+- `frontend/src/pages/SettingsPage.vue` — unique store list + icon preview from transaction data
 
 ## UI/API Expectations
 - Filter bar `Remake XLSX` button must call `POST /api/xlsx/reformat`.
 - After remake succeeds, frontend should refresh transactions.
 - Transactions tables should include: Date, Item, Category, Cost, Store, Tags, Notes.
+- Frontend route `/settings` should list unique stores from `/api/transactions/` and show mapped store icons when available.
 
 ## Safety Rules
 - Create backups before destructive XLSX rewrites.
 - Keep XLSX formatting rules consistent with `backend/excel/formats.py`.
 - Preserve required headers/order unless explicitly asked to change them.
+- Run one-off data mutation scripts with `--dry-run` first before applying writes.
+- For notes-derived field upserts, clean consumed marker text from `Notes` when requested.
 
 ## Done Checklist
 Before finishing a task:

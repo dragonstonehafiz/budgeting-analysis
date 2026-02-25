@@ -238,20 +238,27 @@ export function toTopItemsSeries(transactions, topN = 10) {
     return { series: [], itemNames: [], itemColors: [] }
   }
 
-  // 1. Group by Item — collect all purchase costs and the dominant category
+  // 1. Group by Item — collect purchases and the dominant category
   const groups = {}
   for (const tx of transactions) {
     const name = tx.Item ?? 'Unknown'
-    if (!groups[name]) groups[name] = { costs: [], categories: {} }
+    if (!groups[name]) groups[name] = { purchases: [], categories: {} }
     const cost = parseFloat(tx.Cost)
-    if (!isNaN(cost)) groups[name].costs.push(cost)
+    if (!isNaN(cost)) {
+      groups[name].purchases.push({
+        cost,
+        store: String(tx.Store || '').trim(),
+        tags: String(tx.Tags || '').trim(),
+        notes: String(tx.Notes || '').trim(),
+      })
+    }
     const cat = tx.Category ?? 'Miscellaneous'
     groups[name].categories[cat] = (groups[name].categories[cat] ?? 0) + 1
   }
 
   // 2. Sort by total spend descending, pick top N
   const itemNames = Object.entries(groups)
-    .map(([name, g]) => ({ name, total: g.costs.reduce((s, c) => s + c, 0) }))
+    .map(([name, g]) => ({ name, total: g.purchases.reduce((s, p) => s + p.cost, 0) }))
     .sort((a, b) => b.total - a.total)
     .slice(0, topN)
     .map(x => x.name)
@@ -264,7 +271,7 @@ export function toTopItemsSeries(transactions, topN = 10) {
   })
 
   // 4. How many slots = max purchase count across top items
-  const maxSlots = Math.max(...itemNames.map(name => groups[name].costs.length))
+  const maxSlots = Math.max(...itemNames.map(name => groups[name].purchases.length))
 
   // 5. Transpose into slot-major series
   const series = []
@@ -272,8 +279,15 @@ export function toTopItemsSeries(transactions, topN = 10) {
     series.push({
       name: `Purchase ${slot + 1}`,
       data: itemNames.map(name => {
-        const costs = groups[name].costs
-        return costs[slot] !== undefined ? parseFloat(costs[slot].toFixed(2)) : 0
+        const purchases = groups[name].purchases
+        return purchases[slot] ? parseFloat(purchases[slot].cost.toFixed(2)) : 0
+      }),
+      details: itemNames.map(name => {
+        const purchases = groups[name].purchases
+        const purchase = purchases[slot]
+        return purchase
+          ? { store: purchase.store, tags: purchase.tags, notes: purchase.notes }
+          : null
       }),
     })
   }

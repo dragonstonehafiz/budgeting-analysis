@@ -28,6 +28,7 @@ const chartData = computed(() => ({
   datasets: props.series.map(s => ({
     label:           s.name,
     data:            s.data,
+    details:         s.details || [],
     backgroundColor: props.itemColors,
     borderWidth:     1,
     borderColor:     '#fff',
@@ -68,7 +69,18 @@ const chartOptions = computed(() => ({
   plugins: {
     legend: { display: false },
     tooltip: {
-      callbacks: { label: ctx => ` $${ctx.parsed.x.toLocaleString('en-AU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` },
+      callbacks: {
+        label: (ctx) => {
+          const lines = [` $${ctx.parsed.x.toLocaleString('en-AU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`]
+          const details = ctx.dataset.details?.[ctx.dataIndex]
+          if (!details) return lines
+
+          lines.push(` Store: ${details.store || '—'}`)
+          lines.push(` Tags: ${details.tags || '—'}`)
+          lines.push(` Notes: ${details.notes || '—'}`)
+          return lines
+        },
+      },
     },
   },
   scales: {
