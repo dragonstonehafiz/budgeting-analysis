@@ -5,7 +5,7 @@
  * All functions accept raw transactions and return chart-ready data arrays.
  *
  * Raw transaction shape expected:
- *   { Date: string|Date, Cost: number, Category: string, Month: string, MonthNum: number, ... }
+ *   { Date: string|Date, Cost: number, Category: string, Item: string, Notes?: string }
  *
  * bucketDays controls the aggregation period:
  *   1  = daily
@@ -190,7 +190,9 @@ export function toCategoryDonutSeries(transactions) {
 
 /**
  * Groups transactions by calendar month and returns donut-ready series.
- * Months are sorted chronologically. Uses a generic color palette.
+ * Month name and sort order are derived from the Date field — Month/MonthNum
+ * fields are not required.
+ * Months are sorted chronologically.
  *
  * @param {Array} transactions
  * @returns {Array<{label: string, value: number}>}
@@ -198,19 +200,24 @@ export function toCategoryDonutSeries(transactions) {
 export function toMonthlyDonutSeries(transactions) {
   if (!transactions || transactions.length === 0) return []
 
-  // Use MonthNum + Month for correct sort order
+  // Derive month number and name from the Date string — no Month/MonthNum fields needed
   const map = new Map()
   for (const tx of transactions) {
-    const key = `${String(tx.MonthNum).padStart(2, '0')}_${tx.Month}`
+    const date = new Date(tx.Date)
+    if (isNaN(date)) continue
     const cost = parseFloat(tx.Cost)
     if (isNaN(cost)) continue
+    // Zero-padded month number as sort key, e.g. "01", "12"
+    const monthNum  = String(date.getMonth() + 1).padStart(2, '0')
+    const monthName = date.toLocaleString('en-AU', { month: 'long' })  // e.g. "January"
+    const key = `${monthNum}_${monthName}`
     map.set(key, (map.get(key) ?? 0) + cost)
   }
 
   return Array.from(map.entries())
     .sort(([a], [b]) => a.localeCompare(b))
     .map(([key, value]) => ({
-      label: key.split('_')[1],   // e.g. "January"
+      label: key.split('_')[1],
       value: parseFloat(value.toFixed(2)),
     }))
 }

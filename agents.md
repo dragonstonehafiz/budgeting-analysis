@@ -168,6 +168,10 @@ All charts and stats derive from `transactions` (fetched from backend, year-filt
   
 Bucket-size buttons (1-day / 7-day / 28-day) sit beside the switcher and drive all three charts.
 
+**Donut row** — two `DonutChart` instances side by side below the line chart switcher:
+- Spending by Category (`toCategoryDonutSeries`, `topN=0`, `showLegend=true`)
+- Spending by Month (`toMonthlyDonutSeries`, `topN=0`, `showLegend=true`)
+
 **Bottom sections:** `HorizontalBarChart` (top 10 items) + sortable top-10 transactions table.
 
 ---

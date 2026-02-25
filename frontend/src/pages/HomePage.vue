@@ -75,6 +75,29 @@
       />
     </section>
 
+    <!-- ── Donut charts ──────────────────────────────────────────────── -->
+    <div class="donut-row" :class="{ 'donut-row--single': selectedYear === 'All' }">
+      <section class="chart-section">
+        <DonutChart
+          :key="'cat-' + selectedYear"
+          :series="categoryDonutSeries"
+          title="Spending by Category"
+          :topN="0"
+          :showLegend="true"
+          :height="360"
+        />
+      </section>
+      <section v-if="selectedYear !== 'All'" class="chart-section">
+        <DonutChart
+          :series="monthlyDonutSeries"
+          title="Spending by Month"
+          :topN="0"
+          :showLegend="true"
+          :height="360"
+        />
+      </section>
+    </div>
+
     <!-- ── Top items bar chart ────────────────────────────────────── -->
     <section class="chart-section">
       <HorizontalBarChart
@@ -125,11 +148,14 @@
 import { ref, computed, onMounted } from 'vue'
 import LineChart           from '../components/charts/LineChart.vue'
 import HorizontalBarChart  from '../components/charts/HorizontalBarChart.vue'
+import DonutChart          from '../components/charts/DonutChart.vue'
 import StatCard            from '../components/StatCard.vue'
 import {
   toSpendingSeries,
   toCumulativeSeries,
   toCategorySpendingSeries,
+  toCategoryDonutSeries,
+  toMonthlyDonutSeries,
   computeAverage,
   toTopItemsSeries,
   computeStats,
@@ -175,6 +201,10 @@ const spendingSeries    = computed(() => activeChart.value !== 'trend'      ? []
 const spendingAverage   = computed(() => activeChart.value !== 'trend'      ? 0  : computeAverage(filteredTransactions.value,   bucketDays.value))
 const cumulativeSeries  = computed(() => activeChart.value !== 'cumulative' ? [] : toCumulativeSeries(filteredTransactions.value, bucketDays.value))
 const categorySeries    = computed(() => activeChart.value !== 'category'   ? [] : toCategorySpendingSeries(filteredTransactions.value, bucketDays.value))
+
+// ── Donut charts ──────────────────────────────────────────────────────────
+const categoryDonutSeries = computed(() => toCategoryDonutSeries(filteredTransactions.value))
+const monthlyDonutSeries  = computed(() => toMonthlyDonutSeries(filteredTransactions.value))
 
 // ── Bar chart & table ──────────────────────────────────────────────────────
 const topItems = computed(() => toTopItemsSeries(filteredTransactions.value, 10))
@@ -242,6 +272,23 @@ const top10Transactions = computed(() =>
   padding: 1.25rem 1.5rem;
   margin-bottom: 1.5rem;
   box-shadow: 0 1px 4px rgba(0,0,0,0.05);
+}
+
+.donut-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.5rem;
+  margin-bottom: 1.5rem;
+}
+.donut-row--single {
+  grid-template-columns: 1fr;
+}
+.donut-row > .chart-section {
+  margin-bottom: 0;
+}
+
+@media (max-width: 700px) {
+  .donut-row { grid-template-columns: 1fr; }
 }
 
 .chart-controls {
