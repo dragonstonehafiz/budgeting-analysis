@@ -4,25 +4,12 @@
     <!-- ── Controls bar ─────────────────────────────────────────── -->
     <FilterBar :showSearch="true" />
 
-    <!-- ── Category overview donut ───────────────────────────────── -->
-    <section class="chart-section">
-      <div class="section-header">
-        <h2 class="section-title">Spending by Category</h2>
-      </div>
-      <DonutChart
-        :series="categorySeries"
-        title=""
-        :topN="0"
-        :height="400"
-      />
-    </section>
 
     <!-- ── Category drill-down ───────────────────────────────────── -->
     <section class="chart-section">
       <div class="drill-controls">
         <label class="control-label">Drill into category</label>
         <select v-model="selectedCategory" class="category-select">
-          <option value="All">All Categories</option>
           <option v-for="cat in availableCategories" :key="cat" :value="cat">{{ cat }}</option>
         </select>
       </div>
@@ -77,11 +64,9 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
-import DonutChart         from '../components/charts/DonutChart.vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import HorizontalBarChart from '../components/charts/HorizontalBarChart.vue'
 import {
-  toCategoryDonutSeries,
   toTopItemsSeries,
   getCategoryColor,
 } from '../composables/useChartData.js'
@@ -93,7 +78,7 @@ const { availableYears, selectedYear, search, transactions, loading, initFilters
 onMounted(() => initFilters())
 
 // ── Category filter ────────────────────────────────────────────────────────
-const selectedCategory = ref('All')
+const selectedCategory = ref('')
 
 // ── Transactions filtered by year + search (backend handles year) ────────
 const yearFiltered = computed(() => {
@@ -109,14 +94,17 @@ const availableCategories = computed(() =>
   [...new Set(yearFiltered.value.map(t => t.Category))].sort()
 )
 
-// ── Donut: full category breakdown for the selected year ──────────────────
-const categorySeries = computed(() => toCategoryDonutSeries(yearFiltered.value))
+// Reset selectedCategory to first available whenever the list changes
+watch(availableCategories, (cats) => {
+  if (cats.length && !cats.includes(selectedCategory.value)) {
+    selectedCategory.value = cats[0]
+  }
+}, { immediate: true })
 
-// ── Transactions filtered by year AND selected category ───────────────────
-const filteredByCategory = computed(() => {
-  if (selectedCategory.value === 'All') return yearFiltered.value
-  return yearFiltered.value.filter(t => t.Category === selectedCategory.value)
-})
+// ── Transactions filtered by year AND selected category ─────────────────────
+const filteredByCategory = computed(() =>
+  yearFiltered.value.filter(t => t.Category === selectedCategory.value)
+)
 
 // ── Bar chart and table for drilled-down category ─────────────────────────
 const categoryTopItems = computed(() => toTopItemsSeries(filteredByCategory.value, 10))
