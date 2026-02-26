@@ -13,11 +13,15 @@ const props = defineProps({
   value:  { type: Number,  required: true },
   /** 'currency' | 'currency-rate' | 'integer' | 'percent' */
   format: { type: String,  default: 'currency' },
+  privacyMode: { type: Boolean, default: false },
 })
 
 const formattedValue = computed(() => {
   const v = props.value
   if (!isFinite(v)) return '—'
+  if (props.privacyMode && (props.format === 'currency' || props.format === 'currency-rate')) {
+    return props.format === 'currency-rate' ? '$•••• / period' : '$••••'
+  }
   switch (props.format) {
     case 'integer':
       return v.toLocaleString('en-AU', { maximumFractionDigits: 0 })

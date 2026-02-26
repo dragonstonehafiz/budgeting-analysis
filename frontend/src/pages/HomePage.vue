@@ -8,25 +8,25 @@
     <section class="kpi-section">
       <!-- Row 1 -->
       <div class="kpi-row kpi-row--2">
-        <StatCard label="Total Spent"   :value="stats.totalSpent"  format="currency" />
-        <StatCard label="Items Bought"  :value="stats.itemsBought" format="integer"  />
+        <StatCard label="Total Spent"   :value="stats.totalSpent"  format="currency" :privacyMode="privacyMode" />
+        <StatCard label="Items Bought"  :value="stats.itemsBought" format="integer" :privacyMode="privacyMode" />
       </div>
 
       <!-- Row 2 -->
       <div class="kpi-row kpi-row--5">
-        <StatCard label="Average Spend"       :value="stats.averageSpend" format="currency" />
-        <StatCard label="Lower 25th Pctile"   :value="stats.p25"          format="currency" />
-        <StatCard label="Median Spend"        :value="stats.median"       format="currency" />
-        <StatCard label="Upper 75th Pctile"   :value="stats.p75"          format="currency" />
-        <StatCard label="Std Deviation"       :value="stats.stdDev"       format="currency" />
+        <StatCard label="Average Spend"       :value="stats.averageSpend" format="currency" :privacyMode="privacyMode" />
+        <StatCard label="Lower 25th Pctile"   :value="stats.p25"          format="currency" :privacyMode="privacyMode" />
+        <StatCard label="Median Spend"        :value="stats.median"       format="currency" :privacyMode="privacyMode" />
+        <StatCard label="Upper 75th Pctile"   :value="stats.p75"          format="currency" :privacyMode="privacyMode" />
+        <StatCard label="Std Deviation"       :value="stats.stdDev"       format="currency" :privacyMode="privacyMode" />
       </div>
 
       <!-- Row 3 -->
       <div class="kpi-row kpi-row--4">
-        <StatCard label="Avg Weekly Spend"   :value="stats.avgWeeklySpend"   format="currency" />
-        <StatCard label="Avg Monthly Spend"  :value="stats.avgMonthlySpend"  format="currency" />
-        <StatCard label="Avg Yearly Spend"   :value="stats.avgYearlySpend"   format="currency" />
-        <StatCard label="Spending Volatility" :value="stats.spendingVolatility" format="percent" />
+        <StatCard label="Avg Weekly Spend"   :value="stats.avgWeeklySpend"   format="currency" :privacyMode="privacyMode" />
+        <StatCard label="Avg Monthly Spend"  :value="stats.avgMonthlySpend"  format="currency" :privacyMode="privacyMode" />
+        <StatCard label="Avg Yearly Spend"   :value="stats.avgYearlySpend"   format="currency" :privacyMode="privacyMode" />
+        <StatCard label="Spending Volatility" :value="stats.spendingVolatility" format="percent" :privacyMode="privacyMode" />
       </div>
     </section>
 
@@ -54,24 +54,30 @@
       </div>
 
       <LineChart
+        :key="`trend-${privacyMode}`"
         v-if="activeChart === 'trend'"
         :series="spendingSeries"
         :averageLine="spendingAverage"
         title="Monthly Spending Trend"
         :height="340"
+        :privacyMode="privacyMode"
       />
       <LineChart
+        :key="`cumulative-${privacyMode}`"
         v-else-if="activeChart === 'cumulative'"
         :series="cumulativeSeries"
         title="Cumulative Spending"
         :height="340"
+        :privacyMode="privacyMode"
       />
       <LineChart
+        :key="`category-${privacyMode}`"
         v-else-if="activeChart === 'category'"
         :series="categorySeries"
         title="Spending by Category"
         :showLegend="true"
         :height="380"
+        :privacyMode="privacyMode"
       />
     </section>
 
@@ -79,21 +85,24 @@
     <div class="donut-row" :class="{ 'donut-row--single': selectedYear === 'All' }">
       <section class="chart-section">
         <DonutChart
-          :key="'cat-' + selectedYear"
+          :key="`cat-${selectedYear}-${privacyMode}`"
           :series="categoryDonutSeries"
           title="Spending by Category"
           :topN="0"
           :showLegend="true"
           :height="360"
+          :privacyMode="privacyMode"
         />
       </section>
       <section v-if="selectedYear !== 'All'" class="chart-section">
         <DonutChart
+          :key="`month-${selectedYear}-${privacyMode}`"
           :series="monthlyDonutSeries"
           title="Spending by Month"
           :topN="0"
           :showLegend="true"
           :height="360"
+          :privacyMode="privacyMode"
         />
       </section>
     </div>
@@ -101,12 +110,14 @@
     <!-- ── Top items bar chart ────────────────────────────────────── -->
     <section class="chart-section">
       <HorizontalBarChart
+        :key="`top-items-${privacyMode}`"
         :series="topItems.series"
         :itemNames="topItems.itemNames"
         :itemColors="topItems.itemColors"
         title="Top 10 Items by Spend"
         :showTotals="true"
         :height="420"
+        :privacyMode="privacyMode"
       />
     </section>
 
@@ -114,6 +125,7 @@
     <TransactionsTable
       title="Top 10 Most Expensive Transactions"
       :transactions="top10Transactions"
+      :privacyMode="privacyMode"
     />
 
   </div>
@@ -139,7 +151,7 @@ import {
 import FilterBar          from '../components/FilterBar.vue'
 import { useGlobalFilters } from '../composables/useGlobalFilters.js'
 
-const { availableYears, selectedYear, search, selectedTags, transactions, loading, initFilters } = useGlobalFilters()
+const { selectedYear, search, selectedTags, privacyMode, transactions, initFilters } = useGlobalFilters()
 
 onMounted(() => initFilters())
 

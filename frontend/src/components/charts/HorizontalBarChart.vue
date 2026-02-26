@@ -21,6 +21,7 @@ const props = defineProps({
   title:      { type: String,  default: '' },
   showTotals: { type: Boolean, default: false },
   height:     { type: Number,  default: 400 },
+  privacyMode: { type: Boolean, default: false },
 })
 
 const chartData = computed(() => ({
@@ -53,7 +54,10 @@ const totalsPlugin = {
     totals.forEach((total, i) => {
       const x = scales.x.getPixelForValue(total) + 4
       const y = scales.y.getPixelForValue(i)
-      ctx.fillText(`$${total.toLocaleString('en-AU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, x, y)
+      const totalText = props.privacyMode
+        ? '$••••'
+        : `$${total.toLocaleString('en-AU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+      ctx.fillText(totalText, x, y)
     })
     ctx.restore()
   },
@@ -86,7 +90,12 @@ const chartOptions = computed(() => ({
   scales: {
     x: {
       stacked: true,
-      ticks: { callback: v => `$${Number(v).toLocaleString('en-AU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, color: '#666' },
+      ticks: {
+        callback: v => props.privacyMode
+          ? '$••••'
+          : `$${Number(v).toLocaleString('en-AU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+        color: '#666',
+      },
       grid:  { color: 'rgba(0,0,0,0.05)' },
     },
     y: {

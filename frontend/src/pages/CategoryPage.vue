@@ -17,17 +17,20 @@
       <template v-if="filteredByCategory.length">
         <!-- top items bar chart -->
         <HorizontalBarChart
+          :key="`category-top-items-${selectedCategory}-${privacyMode}`"
           :series="categoryTopItems.series"
           :itemNames="categoryTopItems.itemNames"
           :itemColors="categoryTopItems.itemColors"
           :title="`Top Items — ${selectedCategory}`"
           :showTotals="true"
           :height="380"
+          :privacyMode="privacyMode"
         />
 
         <TransactionsTable
           title="Top 10 Most Expensive Transactions"
           :transactions="top10ByCategory"
+          :privacyMode="privacyMode"
         />
       </template>
 
@@ -49,7 +52,7 @@ import {
 import FilterBar          from '../components/FilterBar.vue'
 import { useGlobalFilters } from '../composables/useGlobalFilters.js'
 
-const { availableYears, selectedYear, search, selectedTags, transactions, loading, initFilters } = useGlobalFilters()
+const { search, selectedTags, privacyMode, transactions, initFilters } = useGlobalFilters()
 
 onMounted(() => initFilters())
 

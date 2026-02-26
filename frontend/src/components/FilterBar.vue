@@ -34,6 +34,14 @@
       >
         {{ remaking ? 'Remaking…' : 'Remake XLSX' }}
       </button>
+      <button
+        type="button"
+        class="privacy-btn"
+        :class="{ 'privacy-btn--active': privacyMode }"
+        @click="privacyMode = !privacyMode"
+      >
+        {{ privacyMode ? 'Privacy: On' : 'Privacy: Off' }}
+      </button>
     </div>
     <div v-if="showSearch" class="filter-right">
       <input
@@ -55,7 +63,7 @@ defineProps({
   showSearch: { type: Boolean, default: false },
 })
 
-const { availableYears, selectedYear, selectedTags, search, transactions, refreshTransactions } = useGlobalFilters()
+const { availableYears, selectedYear, selectedTags, privacyMode, search, transactions, refreshTransactions } = useGlobalFilters()
 const remaking = ref(false)
 const remakeMessage = ref('')
 const isTagPickerOpen = ref(false)
@@ -255,6 +263,23 @@ async function handleRemakeXlsx() {
 .remake-btn:disabled {
   opacity: 0.65;
   cursor: not-allowed;
+}
+
+.privacy-btn {
+  padding: 0.35rem 0.75rem;
+  border: 1px solid #9ca3af;
+  border-radius: 5px;
+  background: #fff;
+  color: #374151;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.privacy-btn--active {
+  border-color: #111827;
+  background: #111827;
+  color: #fff;
 }
 
 .remake-message {

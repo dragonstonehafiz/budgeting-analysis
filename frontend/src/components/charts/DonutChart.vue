@@ -22,6 +22,7 @@ const props = defineProps({
   topN:       { type: Number,  default: 10 },
   showLegend: { type: Boolean, default: false },
   height:     { type: Number,  default: 380 },
+  privacyMode: { type: Boolean, default: false },
 })
 
 const displaySeries = computed(() => {
@@ -60,7 +61,10 @@ const centerLabelPlugin = {
     ctx.fillStyle    = '#333'
     ctx.textAlign    = 'center'
     ctx.textBaseline = 'middle'
-    ctx.fillText(`$${t.toLocaleString('en-AU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, cx, cy)
+    const totalLabel = props.privacyMode
+      ? '$••••'
+      : `$${t.toLocaleString('en-AU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+    ctx.fillText(totalLabel, cx, cy)
     ctx.restore()
   },
 }

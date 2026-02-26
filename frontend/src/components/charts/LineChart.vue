@@ -39,6 +39,7 @@ const props = defineProps({
   caption:     { type: String,  default: '' },
   height:      { type: Number,  default: 320 },
   showLegend:  { type: Boolean, default: false },
+  privacyMode: { type: Boolean, default: false },
 })
 
 // Items for the external HTML legend (excludes rangeArea and empty-label entries)
@@ -127,7 +128,12 @@ const chartOptions = computed(() => ({
       ticks: { color: '#666', maxTicksLimit: 12 },
     },
     y: {
-      ticks: { callback: v => `$${Number(v).toLocaleString('en-AU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, color: '#666' },
+      ticks: {
+        callback: v => props.privacyMode
+          ? '$••••'
+          : `$${Number(v).toLocaleString('en-AU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+        color: '#666',
+      },
       grid: { color: 'rgba(0,0,0,0.05)' },
     },
   },

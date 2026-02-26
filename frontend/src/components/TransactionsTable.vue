@@ -23,7 +23,7 @@
                 {{ tx.Category }}
               </span>
             </td>
-            <td class="col-cost">${{ Number(tx.Cost).toLocaleString('en-AU', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }}</td>
+            <td class="col-cost">{{ formatCost(tx.Cost) }}</td>
             <td class="col-store">
               <div v-if="getStoreDisplayName(tx.Store)" class="store-cell">
                 <img
@@ -57,9 +57,10 @@
 import { getCategoryColor } from '../composables/useChartData.js'
 import { getStoreIcon } from '../config/storeIcons.js'
 
-defineProps({
+const props = defineProps({
   title: { type: String, default: 'Transactions' },
   transactions: { type: Array, required: true },
+  privacyMode: { type: Boolean, default: false },
 })
 
 function parseTags(tags) {
@@ -77,6 +78,11 @@ function hasTags(tags) {
 function getStoreDisplayName(store) {
   const rawStore = String(store || '').trim()
   return rawStore || null
+}
+
+function formatCost(cost) {
+  if (props.privacyMode) return '$••••'
+  return `$${Number(cost).toLocaleString('en-AU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
 }
 </script>
 

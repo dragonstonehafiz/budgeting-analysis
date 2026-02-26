@@ -16,6 +16,7 @@ const availableYears = ref(['All'])
 const selectedYear   = ref('All')
 const search         = ref('')
 const selectedTags   = ref([])
+const privacyMode    = ref(false)
 const transactions   = ref([])
 const loading        = ref(false)
 
@@ -68,6 +69,7 @@ export function useGlobalFilters() {
     selectedYear,
     search,
     selectedTags,
+    privacyMode,
     transactions,
     loading,
     initFilters,
