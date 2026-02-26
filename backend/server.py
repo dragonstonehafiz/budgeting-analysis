@@ -13,7 +13,7 @@ app = FastAPI(title="Budgeting Analysis API")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173"],  # Vite dev server
+    allow_origins=["http://localhost:5173"],  # Vite dev server + Docker (mapped to 5173)
     allow_methods=["*"],
     allow_headers=["*"],
 )
