@@ -1,59 +1,49 @@
 <template>
-  <section class="chart-section">
-    <h2 class="section-title">{{ title }}</h2>
-    <div class="table-wrapper">
-      <table class="data-table">
-        <thead>
-          <tr>
-            <th>Date</th>
-            <th>Item</th>
-            <th>Category</th>
-            <th class="col-cost">Cost</th>
-            <th>Store</th>
-            <th>Tags</th>
-            <th>Notes</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr v-for="(tx, i) in transactions" :key="i">
-            <td>{{ tx.Date }}</td>
-            <td>{{ tx.Item }}</td>
-            <td>
-              <span class="category-badge" :style="{ background: getCategoryColor(tx.Category) }">
-                {{ tx.Category }}
-              </span>
-            </td>
-            <td class="col-cost">{{ formatCost(tx.Cost) }}</td>
-            <td class="col-store">
-              <div v-if="getStoreDisplayName(tx.Store)" class="store-cell">
-                <img
-                  v-if="getStoreIcon(tx.Store)"
-                  :src="getStoreIcon(tx.Store)"
-                  :alt="getStoreDisplayName(tx.Store)"
-                  :title="getStoreDisplayName(tx.Store)"
-                  class="store-icon"
-                />
-                <span v-else>{{ getStoreDisplayName(tx.Store) }}</span>
-              </div>
-              <span v-else>—</span>
-            </td>
-            <td>
-              <div v-if="hasTags(tx.Tags)" class="tags-list">
-                <span v-for="tag in parseTags(tx.Tags)" :key="`${tx.ID}-${tag}`" class="tag-chip">
-                  {{ tag }}
-                </span>
-              </div>
-              <span v-else>—</span>
-            </td>
-            <td class="col-notes">{{ tx.Notes || '—' }}</td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
-  </section>
+  <DataTable
+    :title="title"
+    :columns="txColumns"
+    :rows="tableRows"
+    rowKey="id"
+    emptyMessage="No transactions found."
+  >
+    <template #cell-category="{ value }">
+      <span class="category-badge" :style="{ background: getCategoryColor(value) }">
+        {{ value }}
+      </span>
+    </template>
+    <template #cell-cost="{ value }">
+      {{ formatCost(value) }}
+    </template>
+    <template #cell-store="{ value }">
+      <div v-if="getStoreDisplayName(value)" class="store-cell">
+        <img
+          v-if="getStoreIcon(value)"
+          :src="getStoreIcon(value)"
+          :alt="getStoreDisplayName(value)"
+          :title="getStoreDisplayName(value)"
+          class="store-icon"
+        />
+        <span v-else>{{ getStoreDisplayName(value) }}</span>
+      </div>
+      <span v-else>—</span>
+    </template>
+    <template #cell-tags="{ row }">
+      <div v-if="hasTags(row.tags)" class="tags-list">
+        <span v-for="tag in parseTags(row.tags)" :key="`${row.id}-${tag}`" class="tag-chip">
+          {{ tag }}
+        </span>
+      </div>
+      <span v-else>—</span>
+    </template>
+    <template #cell-notes="{ value }">
+      <span class="col-notes">{{ value || '—' }}</span>
+    </template>
+  </DataTable>
 </template>
 
 <script setup>
+import { computed } from 'vue'
+import DataTable from './DataTable.vue'
 import { getCategoryColor } from '../composables/useChartData.js'
 import { getStoreIcon } from '../config/storeIcons.js'
 
@@ -62,6 +52,29 @@ const props = defineProps({
   transactions: { type: Array, required: true },
   privacyMode: { type: Boolean, default: false },
 })
+
+const txColumns = [
+  { key: 'date', label: 'Date', align: 'left' },
+  { key: 'item', label: 'Item', align: 'left' },
+  { key: 'category', label: 'Category', align: 'left' },
+  { key: 'cost', label: 'Cost', align: 'center' },
+  { key: 'store', label: 'Store', align: 'center' },
+  { key: 'tags', label: 'Tags', align: 'left' },
+  { key: 'notes', label: 'Notes', align: 'left' },
+]
+
+const tableRows = computed(() =>
+  props.transactions.map((tx, index) => ({
+    id: tx.ID ?? index,
+    date: tx.Date,
+    item: tx.Item,
+    category: tx.Category,
+    cost: tx.Cost,
+    store: tx.Store,
+    tags: tx.Tags,
+    notes: tx.Notes,
+  }))
+)
 
 function parseTags(tags) {
   if (!tags || typeof tags !== 'string') return []
@@ -87,48 +100,7 @@ function formatCost(cost) {
 </script>
 
 <style scoped>
-.chart-section {
-  background: #fff;
-  border: 1px solid #e8e8e8;
-  border-radius: 10px;
-  padding: 1.25rem 1.5rem;
-  margin-bottom: 1.5rem;
-  box-shadow: 0 1px 4px rgba(0,0,0,0.05);
-}
-
-.section-title {
-  font-size: 1rem;
-  font-weight: 700;
-  color: #333;
-  margin: 0 0 1rem;
-}
-
-.table-wrapper { overflow-x: auto; }
-
-.data-table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 0.85rem;
-}
-.data-table th {
-  text-align: left;
-  padding: 0.6rem 0.75rem;
-  background: #f5f5f5;
-  border-bottom: 2px solid #e0e0e0;
-  font-size: 0.75rem;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  color: #666;
-}
-.data-table td {
-  padding: 0.55rem 0.75rem;
-  border-bottom: 1px solid #f0f0f0;
-  vertical-align: middle;
-}
-.data-table tbody tr:hover { background: #fafafa; }
-.col-cost  { text-align: center; font-weight: 600; font-variant-numeric: tabular-nums; }
 .col-notes { color: #888; font-style: italic; max-width: 220px; }
-.col-store { text-align: center; }
 
 .category-badge {
   display: inline-block;
@@ -162,7 +134,6 @@ function formatCost(cost) {
   align-items: center;
   justify-content: center;
   min-height: 1.4rem;
-  width: 100%;
 }
 
 .store-icon {

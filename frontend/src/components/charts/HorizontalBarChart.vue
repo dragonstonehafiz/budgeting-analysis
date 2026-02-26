@@ -74,6 +74,14 @@ const chartOptions = computed(() => ({
     legend: { display: false },
     tooltip: {
       callbacks: {
+        title: (items) => {
+          const first = items?.[0]
+          if (!first) return ''
+          const itemName = props.itemNames[first.dataIndex] || first.label || 'Unknown'
+          const details = first.dataset.details?.[first.dataIndex]
+          const note = details?.notes || '—'
+          return `${itemName} | ${note}`
+        },
         label: (ctx) => {
           const lines = [` $${ctx.parsed.x.toLocaleString('en-AU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`]
           const details = ctx.dataset.details?.[ctx.dataIndex]
@@ -81,7 +89,6 @@ const chartOptions = computed(() => ({
 
           lines.push(` Store: ${details.store || '—'}`)
           lines.push(` Tags: ${details.tags || '—'}`)
-          lines.push(` Notes: ${details.notes || '—'}`)
           return lines
         },
       },

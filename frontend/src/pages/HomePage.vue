@@ -122,11 +122,13 @@
     </section>
 
     <!-- ── Top 10 transactions table ─────────────────────────────── -->
-    <TransactionsTable
-      title="Top 10 Most Expensive Transactions"
-      :transactions="top10Transactions"
-      :privacyMode="privacyMode"
-    />
+    <section class="chart-section">
+      <TransactionsTable
+        title="Top 10 Most Expensive Transactions"
+        :transactions="top10Transactions"
+        :privacyMode="privacyMode"
+      />
+    </section>
 
   </div>
 </template>

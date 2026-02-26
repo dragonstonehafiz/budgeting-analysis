@@ -60,7 +60,8 @@ Backend:
 Frontend:
 - `frontend/src/composables/useGlobalFilters.js` — shared year/search/transactions state
 - `frontend/src/components/FilterBar.vue` — year/search + Remake XLSX button
-- `frontend/src/components/TransactionsTable.vue` — shared transactions table
+- `frontend/src/components/DataTable.vue` — generic table component with column-defined alignment
+- `frontend/src/components/TransactionsTable.vue` — transaction-specific wrapper built on `DataTable`
 - `frontend/src/config/storeIcons.js` — normalized store-name to icon mapping
 - `frontend/src/composables/useChartData.js` — chart data transforms
 - `frontend/src/pages/HomePage.vue`
@@ -74,6 +75,7 @@ Frontend:
 - Search filtering should match `Item` and `Notes` fields only.
 - Filter bar should include a tags multi-select; selecting multiple tags must apply OR matching against comma-separated `Tags` values.
 - Filter bar should include a privacy mode toggle that masks always-visible dollar labels across cards/tables/charts while leaving tooltip values available on hover.
+- Category page should include a summary table for items bought more than 5 times, showing item name, times bought, total spent, and average per item.
 - Frontend route `/settings` should list unique stores from `/api/transactions/` and show mapped store icons when available.
 
 ## Safety Rules

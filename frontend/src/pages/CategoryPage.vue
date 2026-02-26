@@ -32,6 +32,21 @@
           :transactions="top10ByCategory"
           :privacyMode="privacyMode"
         />
+
+        <DataTable
+          title="Items Bought More Than 5 Times"
+          :columns="frequentItemsColumns"
+          :rows="frequentItems"
+          rowKey="item"
+          emptyMessage="No items were bought more than 5 times."
+        >
+          <template #cell-totalSpent="{ value }">
+            {{ formatCurrency(value) }}
+          </template>
+          <template #cell-avgPerItem="{ value }">
+            {{ formatCurrency(value) }}
+          </template>
+        </DataTable>
       </template>
 
       <div v-else class="empty-state">
@@ -46,6 +61,7 @@
 import { ref, computed, onMounted, watch } from 'vue'
 import HorizontalBarChart from '../components/charts/HorizontalBarChart.vue'
 import TransactionsTable from '../components/TransactionsTable.vue'
+import DataTable from '../components/DataTable.vue'
 import {
   toTopItemsSeries,
 } from '../composables/useChartData.js'
@@ -73,7 +89,7 @@ const yearFiltered = computed(() => {
   let txs = transactions.value
   if (q) {
     txs = txs.filter(t =>
-    t.Item.toLowerCase().includes(q) || String(t.Notes || '').toLowerCase().includes(q)
+      t.Item.toLowerCase().includes(q) || String(t.Notes || '').toLowerCase().includes(q)
     )
   }
   if (selectedTags.value.length) {
@@ -110,6 +126,40 @@ const top10ByCategory = computed(() =>
     .sort((a, b) => b.Cost - a.Cost)
     .slice(0, 10)
 )
+
+const frequentItems = computed(() => {
+  const byItem = new Map()
+
+  for (const tx of filteredByCategory.value) {
+    const item = String(tx.Item || 'Unknown').trim() || 'Unknown'
+    const cost = Number(tx.Cost)
+    if (!byItem.has(item)) byItem.set(item, { item, count: 0, totalSpent: 0 })
+    const row = byItem.get(item)
+    row.count += 1
+    if (Number.isFinite(cost)) row.totalSpent += cost
+  }
+
+  return [...byItem.values()]
+    .filter((row) => row.count > 5)
+    .map((row) => ({
+      ...row,
+      totalSpent: Number(row.totalSpent.toFixed(2)),
+      avgPerItem: Number((row.totalSpent / row.count).toFixed(2)),
+    }))
+    .sort((a, b) => b.totalSpent - a.totalSpent || b.count - a.count || a.item.localeCompare(b.item))
+})
+
+const frequentItemsColumns = [
+  { key: 'item', label: 'Item', align: 'left' },
+  { key: 'count', label: 'Times Bought', align: 'center' },
+  { key: 'totalSpent', label: 'Total Spent', align: 'right' },
+  { key: 'avgPerItem', label: 'Average Per Item', align: 'right' },
+]
+
+function formatCurrency(value) {
+  if (privacyMode.value) return '$••••'
+  return `$${Number(value).toLocaleString('en-AU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+}
 </script>
 
 <style scoped>
