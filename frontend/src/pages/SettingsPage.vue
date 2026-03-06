@@ -58,7 +58,7 @@ const transactions = ref([])
 const storeRows = computed(() => {
   const uniqueStores = [...new Set(
     transactions.value
-      .map((tx) => String(tx?.Store || '').trim())
+      .map((tx) => String(tx?.Store || '').trim().toLowerCase())
       .filter(Boolean)
   )].sort((a, b) => a.localeCompare(b))
 

@@ -20,7 +20,9 @@ export const storeIcons = {
   'xbox gear shop': 'https://upload.wikimedia.org/wikipedia/commons/thumb/f/f9/Xbox_one_logo.svg/250px-Xbox_one_logo.svg.png',
   'xbox store': 'https://upload.wikimedia.org/wikipedia/commons/thumb/f/f9/Xbox_one_logo.svg/250px-Xbox_one_logo.svg.png',
   bookwalker: "https://upload.wikimedia.org/wikipedia/commons/b/bf/Bookwalkerlogo.jpg",
+  buyee: "https://cdn.brandfetch.io/idXm28V7xB/w/400/h/400/theme/dark/icon.png?c=1dxbfHSJFAPEGdCLU4o5B",
   kinokuniya: "https://seibu.com.my/cdn/shop/collections/kinokuniya_logo.jpg?v=1698235167",
+  kobo: "https://kobowritinglife.zendesk.com/hc/en-us/article_attachments/360091438051",
 }
 
 export function normalizeStoreName(store) {
