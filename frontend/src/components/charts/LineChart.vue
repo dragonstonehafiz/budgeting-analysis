@@ -32,6 +32,36 @@ import 'chartjs-adapter-date-fns'
 
 ChartJS.register(TimeScale, LinearScale, PointElement, LineElement, Tooltip, Filler, Legend)
 
+// Register custom plugin for average line label
+const averageLinePlugin = {
+  id: 'averageLineLabel',
+  afterDraw(chart) {
+    const options = chart.options.plugins?.averageLineLabel
+    if (!options?.averageValue) return
+
+    const ctx = chart.ctx
+    const yScale = chart.scales.y
+    const xScale = chart.scales.x
+
+    if (!yScale || !xScale) return
+
+    const yPixel = yScale.getPixelForValue(options.averageValue)
+    const xPixel = xScale.left - 12
+
+    ctx.save()
+    ctx.font = 'bold 12px sans-serif'
+    ctx.textAlign = 'right'
+    ctx.textBaseline = 'middle'
+
+    const label = `$${options.averageValue.toLocaleString('en-AU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+    ctx.fillStyle = 'rgba(220,53,69,0.85)'
+    ctx.fillText(label, xPixel, yPixel)
+    ctx.restore()
+  }
+}
+
+ChartJS.register(averageLinePlugin)
+
 const props = defineProps({
   series:      { type: Array,   required: true },
   title:       { type: String,  default: '' },
@@ -99,45 +129,52 @@ const chartData = computed(() => {
   return { datasets }
 })
 
-const chartOptions = computed(() => ({
-  responsive: true,
-  maintainAspectRatio: false,
-  animation: false,
-  interaction: {
-    mode: 'index',
-    intersect: false,
-  },
-  plugins: {
-    legend: { display: false }, // always off — we use external HTML legend
-    tooltip: {
-      callbacks: {
-        label: ctx => {
-          if (ctx.parsed.y == null) return null
-          const name = ctx.dataset.label
-          const val  = `$${ctx.parsed.y.toLocaleString('en-AU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
-          return name ? ` ${name}: ${val}` : ` ${val}`
+const chartOptions = computed(() => {
+  const privacyMode = props.privacyMode
+
+  return {
+    responsive: true,
+    maintainAspectRatio: false,
+    animation: false,
+    interaction: {
+      mode: 'index',
+      intersect: false,
+    },
+    plugins: {
+      legend: { display: false }, // always off — we use external HTML legend
+      tooltip: {
+        callbacks: {
+          label: ctx => {
+            if (ctx.parsed.y == null) return null
+            const name = ctx.dataset.label
+            const val  = `$${ctx.parsed.y.toLocaleString('en-AU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+            return name ? ` ${name}: ${val}` : ` ${val}`
+          },
         },
       },
+      averageLineLabel: {
+        averageValue: props.averageLine
+      }
     },
-  },
-  scales: {
-    x: {
-      type: 'time',
-      time: { displayFormats: { day: 'dd MMM', week: 'dd MMM', month: 'MMM yy' }, tooltipFormat: 'dd MMM yyyy' },
-      grid: { display: false },
-      ticks: { color: '#666', maxTicksLimit: 12 },
-    },
-    y: {
-      ticks: {
-        callback: v => props.privacyMode
-          ? '$••••'
-          : `$${Number(v).toLocaleString('en-AU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
-        color: '#666',
+    scales: {
+      x: {
+        type: 'time',
+        time: { displayFormats: { day: 'dd MMM', week: 'dd MMM', month: 'MMM yy' }, tooltipFormat: 'dd MMM yyyy' },
+        grid: { display: false },
+        ticks: { color: '#666', maxTicksLimit: 12 },
       },
-      grid: { color: 'rgba(0,0,0,0.05)' },
+      y: {
+        ticks: {
+          callback: v => privacyMode
+            ? '$••••'
+            : `$${Number(v).toLocaleString('en-AU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+          color: '#666',
+        },
+        grid: { color: 'rgba(0,0,0,0.05)' },
+      },
     },
-  },
-}))
+  }
+})
 </script>
 
 <style scoped>

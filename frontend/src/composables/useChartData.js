@@ -78,6 +78,52 @@ export function bucketTransactions(transactions, bucketDays = 28) {
 }
 
 /**
+ * Groups transactions by calendar month (1st to last day of each month).
+ *
+ * @param {Array} transactions - raw transaction objects
+ * @returns {Array<{x: number, y: number}>} - sorted array of {x: timestamp ms of month start, y: summed cost}
+ */
+export function bucketTransactionsByMonth(transactions) {
+  if (!transactions || transactions.length === 0) return []
+
+  const map = new Map()
+  let minDate = null
+  let maxDate = null
+
+  for (const tx of transactions) {
+    const date = new Date(tx.Date)
+    if (isNaN(date)) continue
+    const cost = parseFloat(tx.Cost)
+    if (isNaN(cost)) continue
+
+    // Create key as YYYY-MM to group by month
+    const year = date.getFullYear()
+    const month = String(date.getMonth() + 1).padStart(2, '0')
+    const key = `${year}-${month}`
+
+    // Store the first day of the month as the timestamp
+    const monthStart = new Date(year, date.getMonth(), 1)
+    const timestamp = monthStart.getTime()
+
+    map.set(key, { timestamp, cost: (map.get(key)?.cost ?? 0) + cost })
+    minDate = minDate == null ? date : new Date(Math.min(minDate.getTime(), date.getTime()))
+    maxDate = maxDate == null ? date : new Date(Math.max(maxDate.getTime(), date.getTime()))
+  }
+
+  if (minDate == null || maxDate == null) return []
+
+  const points = []
+  const seen = new Set()
+  for (const { timestamp, cost } of map.values()) {
+    if (!seen.has(timestamp)) {
+      points.push({ x: timestamp, y: cost })
+      seen.add(timestamp)
+    }
+  }
+  return points.sort((a, b) => a.x - b.x)
+}
+
+/**
  * Returns a single spending series (bucketed totals).
  * Used for the Monthly Spending Trend chart.
  *
@@ -86,26 +132,33 @@ export function bucketTransactions(transactions, bucketDays = 28) {
  * @returns {Array} ApexCharts series array
  */
 export function toSpendingSeries(transactions, bucketDays = 28) {
-  const data = bucketTransactions(transactions, bucketDays)
+  const data = bucketDays === 'month' ? bucketTransactionsByMonth(transactions) : bucketTransactions(transactions, bucketDays)
   return [{ name: 'Spending', data }]
 }
 
 /**
- * Returns a single cumulative spending series.
- * Each point's y-value is the running total of all spend up to that bucket.
+ * Returns a single moving average spending series.
+ * Smooths out daily/weekly fluctuations to show the underlying trend.
+ * Uses a 3-period moving average.
  *
  * @param {Array}  transactions
  * @param {number} bucketDays
  * @returns {Array} ApexCharts series array
  */
-export function toCumulativeSeries(transactions, bucketDays = 1) {
-  const bucketed = bucketTransactions(transactions, bucketDays)
-  let running = 0
-  const data = bucketed.map(p => {
-    running += p.y
-    return { x: p.x, y: parseFloat(running.toFixed(2)) }
+export function toMovingAverageSeries(transactions, bucketDays = 1) {
+  const bucketed = bucketDays === 'month' ? bucketTransactionsByMonth(transactions) : bucketTransactions(transactions, bucketDays)
+  if (bucketed.length === 0) return []
+
+  const windowSize = 3
+  const data = bucketed.map((p, i) => {
+    const start = Math.max(0, i - Math.floor(windowSize / 2))
+    const end = Math.min(bucketed.length, i + Math.floor(windowSize / 2) + 1)
+    const window = bucketed.slice(start, end)
+    const avg = window.reduce((sum, point) => sum + point.y, 0) / window.length
+    return { x: p.x, y: parseFloat(avg.toFixed(2)) }
   })
-  return [{ name: 'Cumulative Spend', data }]
+
+  return [{ name: 'Moving Average', data }]
 }
 
 /**
@@ -113,11 +166,11 @@ export function toCumulativeSeries(transactions, bucketDays = 1) {
  * Used for the average annotation line on the spending trend chart.
  *
  * @param {Array} transactions
- * @param {number} bucketDays
+ * @param {number|string} bucketDays - bucket size in days or 'month' for calendar months
  * @returns {number}
  */
 export function computeAverage(transactions, bucketDays = 28) {
-  const bucketed = bucketTransactions(transactions, bucketDays)
+  const bucketed = bucketDays === 'month' ? bucketTransactionsByMonth(transactions) : bucketTransactions(transactions, bucketDays)
   if (bucketed.length === 0) return 0
   const total = bucketed.reduce((sum, p) => sum + p.y, 0)
   return total / bucketed.length
@@ -165,6 +218,65 @@ export function toCategorySpendingSeries(transactions, bucketDays = 28) {
   return series.sort((a, b) => {
     const sumA = a.data.reduce((s, p) => s + (p.y ?? 0), 0)
     const sumB = b.data.reduce((s, p) => s + (p.y ?? 0), 0)
+    return sumB - sumA
+  })
+}
+
+/**
+ * Returns one cumulative line series per category, each carrying its preset color.
+ * Shows how each category's cumulative spending grows over time.
+ * Series are sorted by total spend descending.
+ *
+ * @param {Array}  transactions
+ * @param {number|string} bucketDays - bucket size in days or 'month' for calendar months
+ * @returns {Array<{name: string, color: string, data: {x: number, y: number}[]}>}
+ */
+export function toCumulativeCategorySeries(transactions, bucketDays = 28) {
+  if (!transactions || transactions.length === 0) return []
+
+  // Group raw transactions by category first
+  const catMap = new Map()
+  for (const tx of transactions) {
+    const cat = tx.Category || 'Miscellaneous'
+    if (!catMap.has(cat)) catMap.set(cat, [])
+    catMap.get(cat).push(tx)
+  }
+
+  const rawSeries = []
+  for (const [cat, txs] of catMap.entries()) {
+    const bucketed = bucketDays === 'month' ? bucketTransactionsByMonth(txs) : bucketTransactions(txs, bucketDays)
+    if (bucketed.length === 0) continue
+
+    // Convert to cumulative
+    let running = 0
+    const data = bucketed.map(p => {
+      running += p.y
+      return { x: p.x, y: parseFloat(running.toFixed(2)) }
+    })
+    rawSeries.push({ name: cat, color: getCategoryColor(cat), data })
+  }
+
+  // Build a union of all x timestamps
+  const allTimestamps = [
+    ...new Set(rawSeries.flatMap(s => s.data.map(p => p.x))),
+  ].sort((a, b) => a - b)
+
+  const series = rawSeries.map(s => {
+    const pointMap = new Map(s.data.map(p => [p.x, p.y]))
+    let lastValue = 0
+    const data = allTimestamps.map(x => {
+      if (pointMap.has(x)) {
+        lastValue = pointMap.get(x)
+      }
+      return { x, y: lastValue }
+    })
+    return { ...s, data }
+  })
+
+  // Sort by final cumulative spend descending
+  return series.sort((a, b) => {
+    const sumA = a.data[a.data.length - 1]?.y ?? 0
+    const sumB = b.data[b.data.length - 1]?.y ?? 0
     return sumB - sumA
   })
 }

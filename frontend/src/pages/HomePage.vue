@@ -66,7 +66,8 @@
         :key="`cumulative-${privacyMode}`"
         v-else-if="activeChart === 'cumulative'"
         :series="cumulativeSeries"
-        title="Cumulative Spending"
+        :averageLine="movingAverageAverage"
+        title="Moving Average"
         :height="340"
         :privacyMode="privacyMode"
       />
@@ -142,8 +143,8 @@ import StatCard            from '../components/StatCard.vue'
 import TransactionsTable   from '../components/TransactionsTable.vue'
 import {
   toSpendingSeries,
-  toCumulativeSeries,
-  toCategorySpendingSeries,
+  toMovingAverageSeries,
+  toCumulativeCategorySeries,
   toCategoryDonutSeries,
   toMonthlyDonutSeries,
   computeAverage,
@@ -160,8 +161,8 @@ onMounted(() => initFilters())
 // ── Chart controls ─────────────────────────────────────────────────────────
 const chartOptions = [
   { key: 'trend',      label: 'Monthly Trend' },
-  { key: 'category',   label: 'By Category' },
-  { key: 'cumulative', label: 'Cumulative' },
+  { key: 'category',   label: 'Cumulative Spend' },
+  { key: 'cumulative', label: 'Moving Average' },
 ]
 const activeChart = ref('trend')
 
@@ -169,8 +170,9 @@ const bucketOptions = [
   { label: '1-day',  value: 1  },
   { label: '7-day',  value: 7  },
   { label: '28-day', value: 28 },
+  { label: 'Monthly', value: 'month' },
 ]
-const bucketDays = ref(28)
+const bucketDays = ref('month')
 
 function parseTags(tags) {
   if (!tags || typeof tags !== 'string') return []
@@ -202,8 +204,15 @@ const stats = computed(() => computeStats(filteredTransactions.value))
 // ── Line chart series (only compute the active chart) ────────────────────
 const spendingSeries    = computed(() => activeChart.value !== 'trend'      ? [] : toSpendingSeries(filteredTransactions.value, bucketDays.value))
 const spendingAverage   = computed(() => activeChart.value !== 'trend'      ? 0  : computeAverage(filteredTransactions.value,   bucketDays.value))
-const cumulativeSeries  = computed(() => activeChart.value !== 'cumulative' ? [] : toCumulativeSeries(filteredTransactions.value, bucketDays.value))
-const categorySeries    = computed(() => activeChart.value !== 'category'   ? [] : toCategorySpendingSeries(filteredTransactions.value, bucketDays.value))
+const cumulativeSeries  = computed(() => activeChart.value !== 'cumulative' ? [] : toMovingAverageSeries(filteredTransactions.value, bucketDays.value))
+const movingAverageAverage = computed(() => {
+  if (activeChart.value !== 'cumulative' || cumulativeSeries.value.length === 0) return 0
+  const data = cumulativeSeries.value[0]?.data ?? []
+  if (data.length === 0) return 0
+  const sum = data.reduce((acc, point) => acc + point.y, 0)
+  return sum / data.length
+})
+const categorySeries    = computed(() => activeChart.value !== 'category'   ? [] : toCumulativeCategorySeries(filteredTransactions.value, bucketDays.value))
 
 // ── Donut charts ──────────────────────────────────────────────────────────
 const categoryDonutSeries = computed(() => toCategoryDonutSeries(filteredTransactions.value))
