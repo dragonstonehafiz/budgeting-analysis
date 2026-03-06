@@ -101,12 +101,25 @@ const yearFiltered = computed(() => {
   return txs
 })
 
-// ── All categories present in this year's data ────────────────────────────
+// ── Category totals for sorting ────────────────────────────────────────────
+const categoryTotals = computed(() => {
+  const totals = new Map()
+  for (const tx of yearFiltered.value) {
+    const cat = tx.Category
+    const cost = Number(tx.Cost) || 0
+    totals.set(cat, (totals.get(cat) || 0) + cost)
+  }
+  return totals
+})
+
+// ── All categories present in this year's data, sorted by total spent ──────
 const availableCategories = computed(() =>
-  [...new Set(yearFiltered.value.map(t => t.Category))].sort()
+  [...new Set(yearFiltered.value.map(t => t.Category))].sort((a, b) =>
+    (categoryTotals.value.get(b) || 0) - (categoryTotals.value.get(a) || 0)
+  )
 )
 
-// Reset selectedCategory to first available whenever the list changes
+// Reset selectedCategory to first available (most spent) whenever the list changes
 watch(availableCategories, (cats) => {
   if (cats.length && !cats.includes(selectedCategory.value)) {
     selectedCategory.value = cats[0]
