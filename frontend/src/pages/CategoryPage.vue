@@ -60,12 +60,12 @@
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue'
 import HorizontalBarChart from '../components/charts/HorizontalBarChart.vue'
-import TransactionsTable from '../components/TransactionsTable.vue'
-import DataTable from '../components/DataTable.vue'
+import TransactionsTable from '../components/tables/TransactionsTable.vue'
+import DataTable from '../components/tables/DataTable.vue'
 import {
   toTopItemsSeries,
 } from '../composables/useChartData.js'
-import FilterBar          from '../components/FilterBar.vue'
+import FilterBar          from '../components/ui/FilterBar.vue'
 import { useGlobalFilters } from '../composables/useGlobalFilters.js'
 
 const { search, selectedTags, privacyMode, transactions, initFilters } = useGlobalFilters()

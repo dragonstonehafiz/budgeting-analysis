@@ -58,6 +58,8 @@
         v-if="activeChart === 'trend'"
         :series="spendingSeries"
         :averageLine="spendingAverage"
+        :transactions="filteredTransactions"
+        :bucketDays="bucketDays"
         title="Monthly Spending Trend"
         :height="340"
         :privacyMode="privacyMode"
@@ -67,6 +69,8 @@
         v-else-if="activeChart === 'cumulative'"
         :series="cumulativeSeries"
         :averageLine="movingAverageAverage"
+        :transactions="filteredTransactions"
+        :bucketDays="bucketDays"
         title="Moving Average"
         :height="340"
         :privacyMode="privacyMode"
@@ -75,6 +79,8 @@
         :key="`category-${privacyMode}`"
         v-else-if="activeChart === 'category'"
         :series="categorySeries"
+        :transactions="filteredTransactions"
+        :bucketDays="bucketDays"
         title="Spending by Category"
         :showLegend="true"
         :height="380"
@@ -139,8 +145,8 @@ import { ref, computed, onMounted } from 'vue'
 import LineChart           from '../components/charts/LineChart.vue'
 import HorizontalBarChart  from '../components/charts/HorizontalBarChart.vue'
 import DonutChart          from '../components/charts/DonutChart.vue'
-import StatCard            from '../components/StatCard.vue'
-import TransactionsTable   from '../components/TransactionsTable.vue'
+import StatCard            from '../components/ui/StatCard.vue'
+import TransactionsTable   from '../components/tables/TransactionsTable.vue'
 import {
   toSpendingSeries,
   toMovingAverageSeries,
@@ -151,7 +157,7 @@ import {
   toTopItemsSeries,
   computeStats,
 } from '../composables/useChartData.js'
-import FilterBar          from '../components/FilterBar.vue'
+import FilterBar          from '../components/ui/FilterBar.vue'
 import { useGlobalFilters } from '../composables/useGlobalFilters.js'
 
 const { selectedYear, search, selectedTags, privacyMode, transactions, initFilters } = useGlobalFilters()

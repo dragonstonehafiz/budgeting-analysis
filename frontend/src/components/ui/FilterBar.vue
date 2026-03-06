@@ -57,7 +57,7 @@
 
 <script setup>
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
-import { useGlobalFilters } from '../composables/useGlobalFilters.js'
+import { useGlobalFilters } from '../../composables/useGlobalFilters.js'
 
 defineProps({
   showSearch: { type: Boolean, default: false },

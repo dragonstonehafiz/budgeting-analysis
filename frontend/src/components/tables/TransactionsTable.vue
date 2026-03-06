@@ -44,8 +44,8 @@
 <script setup>
 import { computed } from 'vue'
 import DataTable from './DataTable.vue'
-import { getCategoryColor } from '../composables/useChartData.js'
-import { getStoreIcon } from '../config/storeIcons.js'
+import { getCategoryColor } from '../../composables/useChartData.js'
+import { getStoreIcon } from '../../config/storeIcons.js'
 
 const props = defineProps({
   title: { type: String, default: 'Transactions' },
