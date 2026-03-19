@@ -133,9 +133,6 @@ const yearSeparatorPlugin = {
 
 ChartJS.register(yearSeparatorPlugin)
 
-// Store expensive items and dot positions for hover interaction
-let expensiveItemsData = new Map()
-
 // Register custom plugin for expensive items
 const expensiveItemsPlugin = {
   id: 'expensiveItems',
@@ -149,7 +146,7 @@ const expensiveItemsPlugin = {
 
     if (!xScale || !yScale) return
 
-    expensiveItemsData.clear()
+    chart._expensiveItemsData = new Map()
     const dotRadius = 5
 
     // Draw dots below x-axis for each bucket with expensive items
@@ -178,7 +175,7 @@ const expensiveItemsPlugin = {
       }
 
       // Store dot position for hover detection
-      expensiveItemsData.set(`${xPixel},${yPixel}`, { items, xPixel, yPixel, dotRadius })
+      chart._expensiveItemsData.set(`${xPixel},${yPixel}`, { items, xPixel, yPixel, dotRadius })
     }
 
     ctx.restore()
@@ -250,24 +247,37 @@ const handleMouseMove = (e) => {
   const mouseX = e.clientX - rect.left
   const mouseY = e.clientY - rect.top
 
+  // Get the chart instance for THIS component's canvas
+  const canvas = e.currentTarget.querySelector('canvas')
+  const chart = canvas ? ChartJS.getChart(canvas) : null
+  const itemsData = chart?._expensiveItemsData
+
   let foundItems = null
   const hoverDistance = 10
 
   // Check if hovering over any expensive item dots
-  for (const data of expensiveItemsData.values()) {
-    const dist = Math.sqrt(Math.pow(mouseX - data.xPixel, 2) + Math.pow(mouseY - data.yPixel, 2))
-    if (dist <= data.dotRadius + hoverDistance) {
-      foundItems = data.items
-      tooltipX.value = data.xPixel
-      tooltipY.value = data.yPixel + 15 // Position below the dot
-      break
+  if (itemsData) {
+    for (const data of itemsData.values()) {
+      const dist = Math.sqrt(Math.pow(mouseX - data.xPixel, 2) + Math.pow(mouseY - data.yPixel, 2))
+      if (dist <= data.dotRadius + hoverDistance) {
+        foundItems = data.items
+        tooltipX.value = data.xPixel
+        tooltipY.value = data.yPixel + 15 // Position below the dot
+        break
+      }
     }
   }
 
   if (foundItems) {
     hoveredItems.value = foundItems
     tooltip.value?.show()
+  } else {
+    tooltip.value?.hide()
   }
+}
+
+const handleMouseLeave = () => {
+  tooltip.value?.hide()
 }
 
 // Items for the external HTML legend (excludes rangeArea and empty-label entries)
@@ -304,7 +314,7 @@ const chartData = computed(() => {
         fill: false,
         pointRadius: 0,
         pointHoverRadius: 5,
-        tension: 0.2,
+        tension: 0,
         borderWidth: 2,
         spanGaps: false,
       })
