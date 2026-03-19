@@ -4,54 +4,61 @@
     <!-- ── Controls bar ─────────────────────────────────────────── -->
     <FilterBar :showSearch="true" />
 
-    <!-- ── Category drill-down ───────────────────────────────────── -->
-    <section class="chart-section">
-      <div class="drill-controls">
-        <label class="control-label">Drill into category</label>
-        <select v-model="selectedCategory" class="category-select">
-          <option v-for="cat in availableCategories" :key="cat" :value="cat">{{ cat }}</option>
-        </select>
-      </div>
+    <!-- ── Card 1: Category selector ─────────────────────────────── -->
+    <div class="drill-controls">
+      <label class="control-label">Drill into category</label>
+      <select v-model="selectedCategory" class="category-select">
+        <option v-for="cat in availableCategories" :key="cat" :value="cat">{{ cat }}</option>
+      </select>
+    </div>
 
-      <!-- ── KPI Cards ─────────────────────────────────────────────── -->
-      <KPIStats :stats="stats" :privacyMode="privacyMode" />
+    <!-- ── Card 2: KPI Stats (only when data exists) ────────────── -->
+    <KPIStats :stats="stats" :privacyMode="privacyMode" />
 
-      <template v-if="filteredByCategory.length">
-        <!-- top items bar chart -->
-        <HorizontalBarChart
-          :key="`category-top-items-${selectedCategory}-${privacyMode}`"
-          :series="categoryTopItems.series"
-          :itemNames="categoryTopItems.itemNames"
-          :itemColors="categoryTopItems.itemColors"
-          :title="`Top Items — ${selectedCategory}`"
-          :showTotals="true"
-          :height="380"
-          :privacyMode="privacyMode"
-        />
+    <!-- ── Card 3: Bar chart (only when data exists) ───────────── -->
+    <section v-if="filteredByCategory.length" class="chart-section">
+      <HorizontalBarChart
+        :key="`category-top-items-${selectedCategory}-${privacyMode}`"
+        :series="categoryTopItems.series"
+        :itemNames="categoryTopItems.itemNames"
+        :itemColors="categoryTopItems.itemColors"
+        :title="`Top Items — ${selectedCategory}`"
+        :showTotals="true"
+        :height="380"
+        :privacyMode="privacyMode"
+      />
+    </section>
 
-        <TransactionsTable
-          title="Top 10 Most Expensive Transactions"
-          :transactions="top10ByCategory"
-          :privacyMode="privacyMode"
-        />
+    <!-- ── Card 4: Top 10 transactions table (only when data exists) ─ -->
+    <section v-if="filteredByCategory.length" class="chart-section">
+      <TransactionsTable
+        title="Top 10 Most Expensive Transactions"
+        :transactions="top10ByCategory"
+        :privacyMode="privacyMode"
+      />
+    </section>
 
-        <DataTable
-          title="Items Bought More Than 5 Times"
-          :columns="frequentItemsColumns"
-          :rows="frequentItems"
-          rowKey="item"
-          emptyMessage="No items were bought more than 5 times."
-        >
-          <template #cell-totalSpent="{ value }">
-            {{ formatCurrency(value) }}
-          </template>
-          <template #cell-avgPerItem="{ value }">
-            {{ formatCurrency(value) }}
-          </template>
-        </DataTable>
-      </template>
+    <!-- ── Card 5: Frequent items table (only when data exists) ─── -->
+    <section v-if="filteredByCategory.length" class="chart-section">
+      <DataTable
+        title="Items Bought More Than 5 Times"
+        :columns="frequentItemsColumns"
+        :rows="frequentItems"
+        rowKey="item"
+        emptyMessage="No items were bought more than 5 times."
+      >
+        <template #cell-totalSpent="{ value }">
+          {{ formatCurrency(value) }}
+        </template>
+        <template #cell-avgPerItem="{ value }">
+          {{ formatCurrency(value) }}
+        </template>
+      </DataTable>
+    </section>
 
-      <div v-else class="empty-state">
+    <!-- ── Empty state: shown as its own card when no data ───────── -->
+    <section v-if="!filteredByCategory.length" class="chart-section">
+      <div class="empty-state">
         No transactions found for the selected filters.
       </div>
     </section>
