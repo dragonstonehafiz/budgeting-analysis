@@ -5,6 +5,8 @@
     :rows="tableRows"
     rowKey="id"
     emptyMessage="No transactions found."
+    :defaultSortKey="defaultSortKey"
+    :defaultSortDir="defaultSortDir"
   >
     <template #cell-category="{ value }">
       <span class="category-badge" :style="{ background: getCategoryColor(value) }">
@@ -51,13 +53,15 @@ const props = defineProps({
   title: { type: String, default: 'Transactions' },
   transactions: { type: Array, required: true },
   privacyMode: { type: Boolean, default: false },
+  defaultSortKey: { type: String, default: null },
+  defaultSortDir: { type: String, default: 'asc' },
 })
 
 const txColumns = [
-  { key: 'date', label: 'Date', align: 'left' },
-  { key: 'item', label: 'Item', align: 'left' },
-  { key: 'category', label: 'Category', align: 'left' },
-  { key: 'cost', label: 'Cost', align: 'center' },
+  { key: 'date', label: 'Date', align: 'left', sortable: true },
+  { key: 'item', label: 'Item', align: 'left', sortable: true },
+  { key: 'category', label: 'Category', align: 'left', sortable: true },
+  { key: 'cost', label: 'Cost', align: 'center', sortable: true },
   { key: 'store', label: 'Store', align: 'center' },
   { key: 'tags', label: 'Tags', align: 'left' },
   { key: 'notes', label: 'Notes', align: 'left' },
@@ -140,5 +144,29 @@ function formatCost(cost) {
   width: 1.8rem;
   height: 1.8rem;
   object-fit: contain;
+}
+
+/* Column width definitions */
+:deep(.data-table) {
+  td:nth-child(1),
+  th:nth-child(1) { width: 120px; }  /* Date */
+
+  td:nth-child(2),
+  th:nth-child(2) { width: auto; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }   /* Item */
+
+  td:nth-child(3),
+  th:nth-child(3) { width: 170px; }   /* Category */
+
+  td:nth-child(4),
+  th:nth-child(4) { width: 80px; }  /* Cost */
+
+  td:nth-child(5),
+  th:nth-child(5) { width: 100px; } /* Store */
+
+  td:nth-child(6),
+  th:nth-child(6) { width: 12%; }   /* Tags */
+
+  td:nth-child(7),
+  th:nth-child(7) { width: auto; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } /* Notes */
 }
 </style>

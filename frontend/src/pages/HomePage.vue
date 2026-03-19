@@ -111,6 +111,28 @@
         title="Top 10 Most Expensive Transactions"
         :transactions="top10Transactions"
         :privacyMode="privacyMode"
+        defaultSortKey="cost"
+        defaultSortDir="desc"
+      />
+    </section>
+
+    <!-- ── Monthly drill-down ─────────────────────────────────── -->
+    <section v-if="isNumericYear" class="chart-section">
+      <div class="chart-controls">
+        <div class="btn-group">
+          <button
+            v-for="(name, idx) in MONTH_NAMES"
+            :key="idx + 1"
+            class="btn btn--sm"
+            :class="{ 'btn--active': selectedMonth === idx + 1 }"
+            @click="selectedMonth = idx + 1"
+          >{{ name }}</button>
+        </div>
+      </div>
+      <TransactionsTable
+        :title="`${MONTH_NAMES[selectedMonth - 1]} ${selectedYear} — All Transactions`"
+        :transactions="monthTransactions"
+        :privacyMode="privacyMode"
       />
     </section>
 
@@ -157,6 +179,10 @@ const bucketOptions = [
 ]
 const bucketDays = ref('month')
 
+// For the monthly drill-down card (only relevant when selectedYear is numeric)
+const MONTH_NAMES = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']
+const selectedMonth = ref(new Date().getMonth() + 1) // 1-12, default to current month
+
 function parseTags(tags) {
   if (!tags || typeof tags !== 'string') return []
   return tags
@@ -179,6 +205,17 @@ const filteredTransactions = computed(() => {
     })
   }
   return txs
+})
+
+// ── Monthly drill-down ─────────────────────────────────────────────────────
+// True only when selectedYear is a numeric year like '2024'
+const isNumericYear = computed(() => /^\d{4}$/.test(selectedYear.value))
+
+// All raw transactions for the selected month (no search/tag filters, no limit)
+const monthTransactions = computed(() => {
+  if (!isNumericYear.value) return []
+  const mm = String(selectedMonth.value).padStart(2, '0')
+  return transactions.value.filter(tx => tx.Date?.slice(5, 7) === mm)
 })
 
 // ── Stats ──────────────────────────────────────────────────────────────────

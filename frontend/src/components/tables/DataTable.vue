@@ -8,14 +8,18 @@
             <th
               v-for="column in columns"
               :key="column.key"
-              :class="alignClass(column.align)"
+              :class="[alignClass(column.align), { 'th--sortable': column.sortable }]"
+              @click="toggleSort(column)"
             >
               {{ column.label }}
+              <span v-if="column.sortable && sortKey === column.key" class="sort-indicator">
+                {{ sortDir === 'asc' ? '▲' : '▼' }}
+              </span>
             </th>
           </tr>
         </thead>
         <tbody>
-          <tr v-for="(row, rowIndex) in rows" :key="row[rowKey] ?? rowIndex">
+          <tr v-for="(row, rowIndex) in sortedRows" :key="row[rowKey] ?? rowIndex">
             <td
               v-for="column in columns"
               :key="`${row[rowKey] ?? rowIndex}-${column.key}`"
@@ -36,17 +40,47 @@
 </template>
 
 <script setup>
-defineProps({
+import { ref, computed } from 'vue'
+
+const props = defineProps({
   title: { type: String, default: '' },
   columns: { type: Array, required: true },
   rows: { type: Array, required: true },
   rowKey: { type: String, default: 'id' },
   emptyMessage: { type: String, default: 'No data.' },
+  defaultSortKey: { type: String, default: null },
+  defaultSortDir: { type: String, default: 'asc' },
 })
+
+// Sort state
+const sortKey = ref(props.defaultSortKey)
+const sortDir = ref(props.defaultSortDir) // 'asc' | 'desc'
 
 function alignClass(align = 'left') {
   return `col-${align}`
 }
+
+function toggleSort(column) {
+  if (!column.sortable) return
+  if (sortKey.value === column.key) {
+    sortDir.value = sortDir.value === 'asc' ? 'desc' : 'asc'
+  } else {
+    sortKey.value = column.key
+    sortDir.value = 'asc'
+  }
+}
+
+const sortedRows = computed(() => {
+  if (!sortKey.value) return props.rows
+  return [...props.rows].sort((a, b) => {
+    const av = a[sortKey.value]
+    const bv = b[sortKey.value]
+    const cmp = typeof av === 'number' && typeof bv === 'number'
+      ? av - bv
+      : String(av ?? '').localeCompare(String(bv ?? ''))
+    return sortDir.value === 'asc' ? cmp : -cmp
+  })
+})
 </script>
 
 <style scoped>
@@ -69,6 +103,7 @@ function alignClass(align = 'left') {
   width: 100%;
   border-collapse: collapse;
   font-size: 0.85rem;
+  table-layout: fixed;
 }
 
 .data-table th {
@@ -108,5 +143,20 @@ function alignClass(align = 'left') {
   text-align: center;
   color: #888;
   font-style: italic;
+}
+
+.th--sortable {
+  cursor: pointer;
+  user-select: none;
+}
+
+.th--sortable:hover {
+  background: #ebebeb;
+}
+
+.sort-indicator {
+  margin-left: 0.3rem;
+  font-size: 0.65rem;
+  opacity: 0.6;
 }
 </style>
