@@ -8,7 +8,7 @@
         {{ item.label }}
       </span>
     </div>
-    <div :style="{ height: height + 'px', position: 'relative' }" @mousemove="handleMouseMove">
+    <div :style="{ height: height + 'px', position: 'relative' }" @mousemove="handleMouseMove" @mouseleave="handleMouseLeave">
       <Line :data="chartData" :options="chartOptions" />
       <ItemListTooltip ref="tooltip" :items="hoveredItems" :tooltip-x="tooltipX" :tooltip-y="tooltipY" />
     </div>

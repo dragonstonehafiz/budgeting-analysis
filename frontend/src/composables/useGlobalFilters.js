@@ -12,8 +12,8 @@
 import { ref, watch } from 'vue'
 
 // ── Singleton state ────────────────────────────────────────────────────────
-const availableYears = ref(['All'])
-const selectedYear   = ref('All')
+const availableYears = ref(['Last 365 Days', 'All'])
+const selectedYear   = ref('Last 365 Days')
 const search         = ref('')
 const selectedTags   = ref([])
 const privacyMode    = ref(false)
@@ -26,7 +26,17 @@ let yearsLoaded = false  // guard so we only hit /years once
 async function fetchTransactions(year) {
   loading.value = true
   try {
-    const url = year === 'All' ? '/api/transactions/' : `/api/transactions/?year=${year}`
+    let url = ''
+    if (year === 'All') {
+      url = '/api/transactions/'
+    }
+    else if (year === 'Last 365 Days') {
+      url = `/api/transactions/?start_date=${new Date(Date.now() - 365*24*60*60*1000).toISOString().slice(0,10)}&end_date=${new Date().toISOString().slice(0,10)}`
+    }
+    else {
+      url = `/api/transactions/?year=${year}`
+    }
+
     transactions.value = await fetch(url).then(r => r.json())
   } catch {
     transactions.value = []
@@ -43,7 +53,7 @@ async function initFilters() {
   if (!yearsLoaded) {
     try {
       const data = await fetch('/api/transactions/years').then(r => r.json())
-      availableYears.value = ['All', ...data.years.slice().sort((a, b) => b - a)]
+      availableYears.value = ['Last 365 Days', 'All', ...data.years.slice().sort((a, b) => b - a)]
       yearsLoaded = true
     } catch {
       // backend not available — dropdown stays as ['All']

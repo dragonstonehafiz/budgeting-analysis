@@ -4,7 +4,6 @@
     <!-- ── Controls bar ─────────────────────────────────────────── -->
     <FilterBar :showSearch="true" />
 
-
     <!-- ── Category drill-down ───────────────────────────────────── -->
     <section class="chart-section">
       <div class="drill-controls">
@@ -13,6 +12,9 @@
           <option v-for="cat in availableCategories" :key="cat" :value="cat">{{ cat }}</option>
         </select>
       </div>
+
+      <!-- ── KPI Cards ─────────────────────────────────────────────── -->
+      <KPIStats :stats="stats" :privacyMode="privacyMode" />
 
       <template v-if="filteredByCategory.length">
         <!-- top items bar chart -->
@@ -61,9 +63,11 @@
 import { ref, computed, onMounted, watch } from 'vue'
 import HorizontalBarChart from '../components/charts/HorizontalBarChart.vue'
 import TransactionsTable from '../components/tables/TransactionsTable.vue'
+import KPIStats from '../components/ui/KPIStats.vue'
 import DataTable from '../components/tables/DataTable.vue'
 import {
   toTopItemsSeries,
+  computeStats,
 } from '../composables/useChartData.js'
 import FilterBar          from '../components/ui/FilterBar.vue'
 import { useGlobalFilters } from '../composables/useGlobalFilters.js'
@@ -130,6 +134,9 @@ watch(availableCategories, (cats) => {
 const filteredByCategory = computed(() =>
   yearFiltered.value.filter(t => t.Category === selectedCategory.value)
 )
+
+// ── Stats ──────────────────────────────────────────────────────────────────
+const stats = computed(() => computeStats(filteredByCategory.value))
 
 // ── Bar chart and table for drilled-down category ─────────────────────────
 const categoryTopItems = computed(() => toTopItemsSeries(filteredByCategory.value, 10))
