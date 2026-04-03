@@ -31,7 +31,9 @@ async function fetchTransactions(year) {
       url = '/api/transactions/'
     }
     else if (year === 'Last 365 Days') {
-      url = `/api/transactions/?start_date=${new Date(Date.now() - 365*24*60*60*1000).toISOString().slice(0,10)}&end_date=${new Date().toISOString().slice(0,10)}`
+      const startDate = new Date(Date.now() - 365*24*60*60*1000).toISOString().slice(0,10)
+      const endDate = new Date(Date.now() + 24*60*60*1000).toISOString().slice(0,10)
+      url = `/api/transactions/?start_date=${startDate}&end_date=${endDate}`
     }
     else {
       url = `/api/transactions/?year=${year}`
