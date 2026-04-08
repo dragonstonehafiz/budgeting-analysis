@@ -5,6 +5,7 @@
       <div class="navbar-links">
         <RouterLink to="/"         class="nav-link" active-class="nav-link--active" exact>Home</RouterLink>
         <RouterLink to="/category" class="nav-link" active-class="nav-link--active">Categories</RouterLink>
+        <RouterLink to="/subscriptions" class="nav-link" active-class="nav-link--active">Subscriptions</RouterLink>
         <RouterLink to="/settings" class="nav-link" active-class="nav-link--active">Settings</RouterLink>
       </div>
     </div>

@@ -62,10 +62,12 @@ Frontend:
 - `frontend/src/components/FilterBar.vue` — year/search + Remake XLSX button
 - `frontend/src/components/DataTable.vue` — generic table component with column-defined alignment
 - `frontend/src/components/TransactionsTable.vue` — transaction-specific wrapper built on `DataTable`
+- `frontend/src/components/charts/BubbleChart.vue` — reusable bubble chart supporting standard x/y/r mode and packed-bubble mode
 - `frontend/src/config/storeIcons.js` — normalized store-name to icon mapping
 - `frontend/src/composables/useChartData.js` — chart data transforms
 - `frontend/src/pages/HomePage.vue`
 - `frontend/src/pages/CategoryPage.vue`
+- `frontend/src/pages/SubscriptionsPage.vue` — Digital Subscriptions analytics with frequency tabs, KPI cards, packed bubble chart, and price/frequency table
 - `frontend/src/pages/SettingsPage.vue` — unique store list + icon preview from transaction data
 
 ## UI/API Expectations
@@ -76,6 +78,10 @@ Frontend:
 - Filter bar should include a tags multi-select; selecting multiple tags must apply OR matching against comma-separated `Tags` values.
 - Filter bar should include a privacy mode toggle that masks always-visible dollar labels across cards/tables/charts while leaving tooltip values available on hover.
 - Category page should include a summary table for items bought more than 5 times, showing item name, times bought, total spent, and average per item.
+- Frontend route `/subscriptions` should only include transactions where `Category` is `Digital Subscriptions`.
+- Subscriptions page should provide frequency tabs with `All` first, then: `One-Time, Weekly, Monthly, Every Two Months, Every Six Months, Yearly, Irregular` when present.
+- Subscriptions page should include a default-off toggle to include/exclude subscriptions with no purchases in the last 365 days.
+- Subscriptions page should show KPI cards below the frequency selector and a packed bubble chart in its own card above the table card.
 - Frontend route `/settings` should list unique stores from `/api/transactions/` and show mapped store icons when available.
 
 ## Safety Rules

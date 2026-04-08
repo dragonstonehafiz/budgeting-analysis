@@ -119,7 +119,7 @@
     <!-- ── Monthly drill-down ─────────────────────────────────── -->
     <section v-if="isNumericYear" class="chart-section">
       <div class="chart-controls">
-        <div class="btn-group">
+        <div class="btn-group month-btn-group">
           <button
             v-for="(name, idx) in MONTH_NAMES"
             :key="idx + 1"
@@ -257,6 +257,12 @@ const top10Transactions = computed(() =>
 
 /* ── KPI cards ───────────────────────────────────── */
 .btn-group { display: flex; gap: 0.3rem; flex-wrap: wrap; }
+.month-btn-group {
+  width: 100%;
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  gap: 0.35rem;
+}
 
 .btn {
   padding: 0.35rem 0.85rem;
@@ -276,6 +282,10 @@ const top10Transactions = computed(() =>
   font-weight: 600;
 }
 .btn--sm { padding: 0.25rem 0.65rem; font-size: 0.78rem; }
+.month-btn-group .btn--sm {
+  width: 100%;
+  text-align: center;
+}
 
 /* ── Chart sections ──────────────────────────────── */
 .chart-section {
@@ -302,6 +312,7 @@ const top10Transactions = computed(() =>
 
 @media (max-width: 700px) {
   .donut-row { grid-template-columns: 1fr; }
+  .month-btn-group { grid-template-columns: repeat(6, minmax(0, 1fr)); }
 }
 
 .chart-controls {
