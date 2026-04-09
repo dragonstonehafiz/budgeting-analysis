@@ -250,12 +250,11 @@ const top10Transactions = computed(() =>
 
 <style scoped>
 .page-container {
-  max-width: 1300px;
+  max-width: 1600px;
   margin: 0 auto;
-  padding: 1.5rem 2rem 3rem;
+  padding: 1.35rem 2rem 3rem;
 }
 
-/* ── KPI cards ───────────────────────────────────── */
 .btn-group { display: flex; gap: 0.3rem; flex-wrap: wrap; }
 .month-btn-group {
   width: 100%;
@@ -265,21 +264,27 @@ const top10Transactions = computed(() =>
 }
 
 .btn {
-  padding: 0.35rem 0.85rem;
-  border: 1px solid #ccc;
-  border-radius: 5px;
-  background: #fff;
-  color: #555;
-  font-size: 0.85rem;
-  cursor: pointer;
-  transition: background 0.12s, color 0.12s, border-color 0.12s;
-}
-.btn:hover { background: #f0f0f0; }
-.btn--active {
-  background: #1e293b;
-  color: #fff;
-  border-color: #1e293b;
+  padding: 0.38rem 0.88rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface-soft);
+  color: var(--text-muted);
+  font-size: 0.82rem;
   font-weight: 600;
+  cursor: pointer;
+  transition: background var(--transition), color var(--transition), border-color var(--transition), box-shadow var(--transition);
+}
+.btn:hover {
+  background: #e8f0fd;
+  color: var(--accent-strong);
+  border-color: #c9dbfb;
+}
+.btn--active {
+  background: linear-gradient(135deg, var(--accent), var(--accent-strong));
+  color: #fff;
+  border-color: var(--accent);
+  font-weight: 600;
+  box-shadow: 0 8px 16px rgba(15, 62, 168, 0.24);
 }
 .btn--sm { padding: 0.25rem 0.65rem; font-size: 0.78rem; }
 .month-btn-group .btn--sm {
@@ -287,21 +292,20 @@ const top10Transactions = computed(() =>
   text-align: center;
 }
 
-/* ── Chart sections ──────────────────────────────── */
 .chart-section {
-  background: #fff;
-  border: 1px solid #e8e8e8;
-  border-radius: 10px;
-  padding: 1.25rem 1.5rem;
-  margin-bottom: 1.5rem;
-  box-shadow: 0 1px 4px rgba(0,0,0,0.05);
+  background: linear-gradient(180deg, #ffffff 0%, #fbfdff 100%);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 1.2rem 1.35rem;
+  margin-bottom: 1.15rem;
+  box-shadow: var(--shadow-sm);
 }
 
 .donut-row {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 1.5rem;
-  margin-bottom: 1.5rem;
+  gap: 1.15rem;
+  margin-bottom: 1.15rem;
 }
 .donut-row--single {
   grid-template-columns: 1fr;
@@ -319,14 +323,17 @@ const top10Transactions = computed(() =>
   display: flex;
   align-items: center;
   gap: 0.75rem;
-  margin-bottom: 1rem;
+  margin-bottom: 0.9rem;
   flex-wrap: wrap;
 }
 
 .section-title {
-  font-size: 1rem;
+  font-size: 1.02rem;
   font-weight: 700;
-  color: #333;
+  color: var(--text);
   margin: 0 0 1rem;
+  letter-spacing: -0.01em;
 }
 </style>
+
+

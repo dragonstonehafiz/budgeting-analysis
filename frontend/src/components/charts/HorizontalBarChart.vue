@@ -115,5 +115,5 @@ const chartOptions = computed(() => ({
 </script>
 
 <style scoped>
-.chart-title { font-size: 0.95rem; font-weight: 600; color: #333; margin: 0 0 0.5rem; }
+.chart-title { font-size: 1rem; font-weight: 700; color: var(--text); margin: 0 0 0.6rem; letter-spacing: -0.01em; }
 </style>

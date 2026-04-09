@@ -41,7 +41,7 @@ defineProps({
 </script>
 
 <style scoped>
-.kpi-section { display: flex; flex-direction: column; gap: 0.75rem; margin-bottom: 2rem; }
+.kpi-section { display: flex; flex-direction: column; gap: 0.75rem; margin-bottom: 1.5rem; }
 
 .kpi-row {
   display: grid;

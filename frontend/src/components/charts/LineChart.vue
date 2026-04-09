@@ -394,8 +394,8 @@ const chartOptions = computed(() => {
 </script>
 
 <style scoped>
-.chart-title   { font-size: 0.95rem; font-weight: 600; color: #333; margin: 0 0 0.5rem; }
-.chart-caption { font-size: 0.78rem; color: #888; text-align: center; margin: 0.25rem 0 0; }
+.chart-title   { font-size: 1rem; font-weight: 700; color: var(--text); margin: 0 0 0.6rem; letter-spacing: -0.01em; }
+.chart-caption { font-size: 0.78rem; color: var(--text-faint); text-align: center; margin: 0.25rem 0 0; }
 
 .chart-legend {
   display: flex;
@@ -408,7 +408,7 @@ const chartOptions = computed(() => {
   align-items: center;
   gap: 0.4rem;
   font-size: 0.78rem;
-  color: #444;
+  color: var(--text-muted);
   white-space: nowrap;
 }
 .legend-swatch {

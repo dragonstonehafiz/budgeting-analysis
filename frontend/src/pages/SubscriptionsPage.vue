@@ -298,28 +298,29 @@ function formatCurrency(value) {
 
 <style scoped>
 .page-container {
-  max-width: 1300px;
+  max-width: 1600px;
   margin: 0 auto;
-  padding: 1.5rem 2rem 3rem;
+  padding: 1.35rem 2rem 3rem;
 }
 
 .chart-section {
-  background: #fff;
-  border: 1px solid #e8e8e8;
-  border-radius: 10px;
-  padding: 1.25rem 1.5rem;
-  margin-bottom: 1.5rem;
-  box-shadow: 0 1px 4px rgba(0,0,0,0.05);
+  background: linear-gradient(180deg, #ffffff 0%, #fbfdff 100%);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 1.2rem 1.35rem;
+  margin-bottom: 1.15rem;
+  box-shadow: var(--shadow-sm);
 }
 
 .section-title {
   margin: 0 0 0.8rem;
-  font-size: 1.05rem;
-  color: #1f2937;
+  font-size: 1.1rem;
+  color: var(--text);
+  letter-spacing: -0.01em;
 }
 
 .top-controls {
-  margin-bottom: 1rem;
+  margin-bottom: 0.95rem;
 }
 
 .toggle-row {
@@ -327,8 +328,9 @@ function formatCurrency(value) {
   align-items: center;
   gap: 0.5rem;
   margin-bottom: 0.7rem;
-  font-size: 0.85rem;
-  color: #374151;
+  font-size: 0.84rem;
+  color: var(--text-muted);
+  font-weight: 500;
 }
 
 .frequency-tabs {
@@ -341,21 +343,30 @@ function formatCurrency(value) {
 
 .tab-btn {
   width: 100%;
+  min-height: 35px;
   padding: 0.3rem 0.65rem;
-  border: 1px solid #d1d5db;
-  border-radius: 6px;
-  background: #fff;
-  color: #374151;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface-soft);
+  color: var(--text-muted);
   cursor: pointer;
   font-size: 0.8rem;
   font-weight: 600;
   text-align: center;
+  transition: background var(--transition), border-color var(--transition), color var(--transition), box-shadow var(--transition);
+}
+
+.tab-btn:hover {
+  background: #e8f0fd;
+  border-color: #c9dbfb;
+  color: var(--accent-strong);
 }
 
 .tab-btn--active {
-  background: #111827;
-  border-color: #111827;
+  background: linear-gradient(135deg, var(--accent), var(--accent-strong));
+  border-color: var(--accent);
   color: #fff;
+  box-shadow: 0 8px 16px rgba(15, 62, 168, 0.24);
 }
 
 .kpi-row {
@@ -369,11 +380,11 @@ function formatCurrency(value) {
 }
 
 .bubble-chart-wrap {
-  margin: 1rem 0 0.25rem;
+  margin: 0.8rem 0 0.25rem;
 }
 
 .empty-state {
-  color: #6b7280;
+  color: var(--text-faint);
   font-style: italic;
 }
 
@@ -383,3 +394,5 @@ function formatCurrency(value) {
   }
 }
 </style>
+
+

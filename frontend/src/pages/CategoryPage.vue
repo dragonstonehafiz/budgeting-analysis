@@ -191,52 +191,71 @@ function formatCurrency(value) {
 
 <style scoped>
 .page-container {
-  max-width: 1300px;
+  max-width: 1600px;
   margin: 0 auto;
-  padding: 1.5rem 2rem 3rem;
+  padding: 1.35rem 2rem 3rem;
 }
 
-/* ── Chart sections ──────────────────────────────── */
 .chart-section {
-  background: #fff;
-  border: 1px solid #e8e8e8;
-  border-radius: 10px;
-  padding: 1.25rem 1.5rem;
-  margin-bottom: 1.5rem;
-  box-shadow: 0 1px 4px rgba(0,0,0,0.05);
+  background: linear-gradient(180deg, #ffffff 0%, #fbfdff 100%);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 1.2rem 1.35rem;
+  margin-bottom: 1.15rem;
+  box-shadow: var(--shadow-sm);
 }
 
 .section-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.5rem; }
-.section-title  { font-size: 1rem; font-weight: 700; color: #333; margin: 0 0 1rem; }
+.section-title  {
+  font-size: 1.02rem;
+  font-weight: 700;
+  color: var(--text);
+  margin: 0 0 1rem;
+  letter-spacing: -0.01em;
+}
 
-/* ── Drill controls ──────────────────────────────── */
 .drill-controls {
   display: flex;
   align-items: center;
   gap: 0.75rem;
-  margin-bottom: 1.25rem;
+  margin-bottom: 1rem;
   flex-wrap: wrap;
+  padding: 0.75rem 0.95rem;
+  border-radius: var(--radius-md);
+  background: rgba(255, 255, 255, 0.88);
+  border: 1px solid var(--border);
+}
+
+.control-label {
+  font-size: 0.86rem;
+  color: var(--text-muted);
+  font-weight: 600;
 }
 
 .category-select {
+  min-height: 36px;
   padding: 0.35rem 0.75rem;
-  border: 1px solid #ccc;
-  border-radius: 5px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
   font-size: 0.85rem;
-  background: #fff;
+  background: var(--surface);
+  color: var(--text);
   cursor: pointer;
   outline: none;
   min-width: 200px;
-  transition: border-color 0.15s;
+  transition: border-color var(--transition), box-shadow var(--transition);
 }
-.category-select:focus { border-color: #1a1a2e; }
+.category-select:focus {
+  border-color: var(--ring);
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.18);
+}
 
-/* ── Empty state ─────────────────────────────────── */
 .empty-state {
   text-align: center;
-  color: #aaa;
-  padding: 2rem;
+  color: var(--text-faint);
+  padding: 1.8rem;
   font-style: italic;
 }
-
 </style>
+
+

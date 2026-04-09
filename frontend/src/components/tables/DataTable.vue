@@ -85,45 +85,59 @@ const sortedRows = computed(() => {
 
 <style scoped>
 .table-section {
-  margin-top: 1.25rem;
+  margin-top: 0.25rem;
 }
 
 .table-title {
-  margin: 0 0 0.75rem;
-  font-size: 0.95rem;
+  margin: 0 0 0.9rem;
+  font-size: 1rem;
   font-weight: 700;
-  color: #333;
+  color: var(--text);
+  letter-spacing: -0.01em;
 }
 
 .table-wrapper {
   overflow-x: auto;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface);
 }
 
 .data-table {
   width: 100%;
-  border-collapse: collapse;
-  font-size: 0.85rem;
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: 0.84rem;
   table-layout: fixed;
 }
 
 .data-table th {
-  padding: 0.6rem 0.75rem;
-  background: #f5f5f5;
-  border-bottom: 2px solid #e0e0e0;
-  font-size: 0.75rem;
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  padding: 0.68rem 0.75rem;
+  background: var(--surface-muted);
+  border-bottom: 1px solid var(--border);
+  font-size: 0.72rem;
   text-transform: uppercase;
-  letter-spacing: 0.04em;
-  color: #666;
+  letter-spacing: 0.08em;
+  color: var(--text-faint);
+  font-weight: 700;
 }
 
 .data-table td {
-  padding: 0.55rem 0.75rem;
-  border-bottom: 1px solid #f0f0f0;
+  padding: 0.62rem 0.75rem;
+  border-bottom: 1px solid #edf2f7;
   vertical-align: middle;
+  color: var(--text-muted);
+}
+
+.data-table tbody tr:nth-child(even) {
+  background: #fcfdff;
 }
 
 .data-table tbody tr:hover {
-  background: #fafafa;
+  background: #f1f7ff;
 }
 
 .col-left {
@@ -141,22 +155,25 @@ const sortedRows = computed(() => {
 
 .empty-row {
   text-align: center;
-  color: #888;
+  color: var(--text-faint);
   font-style: italic;
+  padding: 1.2rem 0.75rem;
 }
 
 .th--sortable {
   cursor: pointer;
   user-select: none;
+  transition: background var(--transition), color var(--transition);
 }
 
 .th--sortable:hover {
-  background: #ebebeb;
+  background: #e8f0fd;
+  color: var(--accent-strong);
 }
 
 .sort-indicator {
-  margin-left: 0.3rem;
+  margin-left: 0.24rem;
   font-size: 0.65rem;
-  opacity: 0.6;
+  opacity: 0.72;
 }
 </style>

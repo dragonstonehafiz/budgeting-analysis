@@ -86,70 +86,82 @@ onMounted(async () => {
 
 <style scoped>
 .page-container {
-  max-width: 1300px;
+  max-width: 1600px;
   margin: 0 auto;
-  padding: 1.5rem 2rem 3rem;
+  padding: 1.35rem 2rem 3rem;
 }
 
 .panel {
-  background: #fff;
-  border: 1px solid #e8e8e8;
-  border-radius: 10px;
-  padding: 1.25rem 1.5rem;
-  box-shadow: 0 1px 4px rgba(0,0,0,0.05);
+  background: linear-gradient(180deg, #ffffff 0%, #fbfdff 100%);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 1.2rem 1.35rem;
+  box-shadow: var(--shadow-sm);
 }
 
 .panel-header {
-  margin-bottom: 1rem;
+  margin-bottom: 0.9rem;
 }
 
 .panel-title {
   margin: 0;
-  font-size: 1.1rem;
-  color: #1f2937;
+  font-size: 1.12rem;
+  color: var(--text);
+  letter-spacing: -0.01em;
 }
 
 .panel-subtitle {
   margin: 0.35rem 0 0;
-  color: #6b7280;
+  color: var(--text-faint);
   font-size: 0.88rem;
 }
 
 .table-wrapper {
   overflow-x: auto;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
 }
 
 .data-table {
   width: 100%;
-  border-collapse: collapse;
-  font-size: 0.85rem;
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: 0.84rem;
 }
 
 .data-table th {
   text-align: left;
-  padding: 0.6rem 0.75rem;
-  background: #f5f5f5;
-  border-bottom: 2px solid #e0e0e0;
-  font-size: 0.75rem;
+  padding: 0.68rem 0.75rem;
+  background: var(--surface-muted);
+  border-bottom: 1px solid var(--border);
+  font-size: 0.72rem;
   text-transform: uppercase;
-  letter-spacing: 0.04em;
-  color: #666;
+  letter-spacing: 0.08em;
+  color: var(--text-faint);
+  font-weight: 700;
 }
 
 .data-table td {
-  padding: 0.55rem 0.75rem;
-  border-bottom: 1px solid #f0f0f0;
+  padding: 0.6rem 0.75rem;
+  border-bottom: 1px solid #edf2f7;
   vertical-align: middle;
+  color: var(--text-muted);
+}
+
+.data-table tbody tr:nth-child(even) {
+  background: #fcfdff;
 }
 
 .data-table tbody tr:hover {
-  background: #fafafa;
+  background: #f1f7ff;
 }
 
 .store-icon {
-  width: 1.2rem;
-  height: 1.2rem;
+  width: 1.35rem;
+  height: 1.35rem;
   object-fit: contain;
+  border-radius: 6px;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.15);
 }
 
 .col-source {
@@ -158,16 +170,19 @@ onMounted(async () => {
 }
 
 .col-source a {
-  color: #2563eb;
+  color: var(--accent);
   text-decoration: none;
 }
 
 .col-source a:hover {
+  color: var(--accent-strong);
   text-decoration: underline;
 }
 
 .empty-state {
-  color: #6b7280;
+  color: var(--text-faint);
   font-style: italic;
 }
 </style>
+
+

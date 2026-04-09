@@ -104,16 +104,17 @@ function formatCost(cost) {
 </script>
 
 <style scoped>
-.col-notes { color: #888; font-style: italic; max-width: 220px; }
+.col-notes { color: var(--text-faint); font-style: italic; max-width: 220px; }
 
 .category-badge {
   display: inline-block;
-  padding: 0.15rem 0.55rem;
-  border-radius: 12px;
-  font-size: 0.75rem;
-  font-weight: 500;
-  color: rgba(0, 0, 0, 0.7);
+  padding: 0.18rem 0.58rem;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: rgba(15, 23, 42, 0.78);
   white-space: nowrap;
+  border: 1px solid rgba(148, 163, 184, 0.36);
 }
 
 .tags-list {
@@ -124,12 +125,13 @@ function formatCost(cost) {
 
 .tag-chip {
   display: inline-block;
-  background: #eef2f7;
-  border: 1px solid #d7dde8;
-  color: #44506a;
+  background: #e9f1ff;
+  border: 1px solid #c8dbfb;
+  color: #1e3a8a;
   border-radius: 999px;
   padding: 0.1rem 0.5rem;
   font-size: 0.72rem;
+  font-weight: 600;
   white-space: nowrap;
 }
 
@@ -141,9 +143,11 @@ function formatCost(cost) {
 }
 
 .store-icon {
-  width: 1.8rem;
-  height: 1.8rem;
+  width: 1.55rem;
+  height: 1.55rem;
   object-fit: contain;
+  border-radius: 6px;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.15);
 }
 
 /* Column width definitions */

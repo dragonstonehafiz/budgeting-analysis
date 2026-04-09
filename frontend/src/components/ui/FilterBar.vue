@@ -132,26 +132,45 @@ async function handleRemakeXlsx() {
 .filter-bar {
   display: flex;
   align-items: center;
-  gap: 1.5rem;
-  margin-bottom: 1.5rem;
+  gap: 1rem;
+  margin-bottom: 1.25rem;
   flex-wrap: wrap;
+  position: relative;
+  z-index: 40;
+  padding: 0.9rem 1rem;
+  border-radius: var(--radius-lg);
+  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-sm);
+  backdrop-filter: blur(4px);
 }
 
-.filter-left  { display: flex; align-items: center; gap: 0.75rem; }
+.filter-left  { display: flex; align-items: center; gap: 0.65rem; flex-wrap: wrap; }
 .filter-right { display: flex; align-items: center; margin-left: auto; }
-.filter-label { font-size: 0.8rem; font-weight: 600; color: #666; text-transform: uppercase; }
+.filter-label {
+  font-size: 0.74rem;
+  font-weight: 700;
+  color: var(--text-faint);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
 
 .year-select {
-  padding: 0.35rem 0.75rem;
-  border: 1px solid #ccc;
-  border-radius: 5px;
-  font-size: 0.85rem;
-  background: #fff;
+  min-height: 36px;
+  padding: 0.35rem 0.72rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  font-size: 0.84rem;
+  background: var(--surface);
+  color: var(--text);
   cursor: pointer;
   outline: none;
-  transition: border-color 0.15s;
+  transition: border-color var(--transition), box-shadow var(--transition);
 }
-.year-select:focus { border-color: #1e293b; }
+.year-select:focus {
+  border-color: var(--ring);
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
+}
 
 .tag-picker {
   position: relative;
@@ -164,19 +183,22 @@ async function handleRemakeXlsx() {
   gap: 0.6rem;
   min-width: 210px;
   max-width: 280px;
+  min-height: 36px;
   padding: 0.35rem 0.7rem;
-  border: 1px solid #ccc;
-  border-radius: 5px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
   font-size: 0.85rem;
-  background: #fff;
+  background: var(--surface);
+  color: var(--text);
   cursor: pointer;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  transition: border-color var(--transition), box-shadow var(--transition), background var(--transition);
 }
 
 .tag-picker-caret {
-  color: #6b7280;
+  color: var(--text-faint);
   font-size: 0.78rem;
 }
 
@@ -184,15 +206,15 @@ async function handleRemakeXlsx() {
   position: absolute;
   top: calc(100% + 0.35rem);
   left: 0;
-  z-index: 20;
+  z-index: 120;
   min-width: 230px;
   max-width: 300px;
   max-height: 220px;
   overflow-y: auto;
-  background: #fff;
-  border: 1px solid #d1d5db;
-  border-radius: 8px;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-md);
   padding: 0.45rem;
 }
 
@@ -201,22 +223,23 @@ async function handleRemakeXlsx() {
   align-items: center;
   gap: 0.45rem;
   padding: 0.28rem 0.32rem;
-  border-radius: 4px;
+  border-radius: 6px;
   font-size: 0.84rem;
+  color: var(--text-muted);
 }
 
 .tag-option:hover {
-  background: #f3f4f6;
+  background: var(--surface-soft);
 }
 
 .tag-clear-btn {
   width: 100%;
   margin: 0 0 0.35rem;
   padding: 0.28rem 0.45rem;
-  border: 1px solid #d1d5db;
-  border-radius: 4px;
-  background: #f9fafb;
-  color: #374151;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface-soft);
+  color: var(--text-muted);
   font-size: 0.8rem;
   text-align: left;
   cursor: pointer;
@@ -224,41 +247,56 @@ async function handleRemakeXlsx() {
 
 .tag-empty {
   margin: 0.3rem 0.1rem;
-  color: #6b7280;
+  color: var(--text-faint);
   font-size: 0.8rem;
 }
 
 .tag-picker-btn:focus,
 .tag-picker-btn:hover {
-  border-color: #1e293b;
+  border-color: var(--ring);
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.18);
 }
 
 .tag-picker-menu:focus-within {
   outline: none;
-  border-color: #1e293b;
+  border-color: var(--ring);
 }
 
 .search-input {
-  padding: 0.4rem 0.8rem;
-  border: 1px solid #ccc;
-  border-radius: 5px;
+  min-height: 36px;
+  padding: 0.4rem 0.78rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
   font-size: 0.85rem;
   width: 240px;
   outline: none;
-  transition: border-color 0.15s;
+  background: var(--surface);
+  color: var(--text);
+  transition: border-color var(--transition), box-shadow var(--transition);
 }
-.search-input:focus { border-color: #1a1a2e; }
+.search-input::placeholder {
+  color: var(--text-faint);
+}
+.search-input:focus {
+  border-color: var(--ring);
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
+}
 
 .remake-btn {
-  padding: 0.35rem 0.75rem;
-  border: 1px solid #1e293b;
-  border-radius: 5px;
-  background: #1e293b;
+  min-height: 36px;
+  padding: 0.35rem 0.82rem;
+  border: 1px solid var(--accent);
+  border-radius: var(--radius-sm);
+  background: linear-gradient(135deg, var(--accent), var(--accent-strong));
   color: #fff;
-  font-size: 0.82rem;
+  font-size: 0.8rem;
   font-weight: 600;
   cursor: pointer;
-  transition: opacity 0.15s ease;
+  transition: transform var(--transition), box-shadow var(--transition), opacity var(--transition);
+}
+.remake-btn:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 10px 18px rgba(15, 62, 168, 0.3);
 }
 .remake-btn:disabled {
   opacity: 0.65;
@@ -266,26 +304,44 @@ async function handleRemakeXlsx() {
 }
 
 .privacy-btn {
-  padding: 0.35rem 0.75rem;
-  border: 1px solid #9ca3af;
-  border-radius: 5px;
-  background: #fff;
-  color: #374151;
-  font-size: 0.82rem;
+  min-height: 36px;
+  padding: 0.35rem 0.78rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--text-muted);
+  font-size: 0.8rem;
   font-weight: 600;
   cursor: pointer;
+  transition: background var(--transition), border-color var(--transition), color var(--transition);
 }
 
 .privacy-btn--active {
-  border-color: #111827;
-  background: #111827;
-  color: #fff;
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  color: var(--accent-strong);
+}
+
+.privacy-btn:hover,
+.privacy-btn:focus {
+  border-color: var(--ring);
 }
 
 .remake-message {
   margin: 0;
   font-size: 0.8rem;
-  color: #555;
+  color: var(--text-muted);
   flex-basis: 100%;
+}
+
+@media (max-width: 900px) {
+  .filter-right {
+    margin-left: 0;
+    width: 100%;
+  }
+
+  .search-input {
+    width: 100%;
+  }
 }
 </style>

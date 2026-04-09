@@ -358,10 +358,11 @@ function hidePackedTooltip() {
 
 <style scoped>
 .chart-title {
-  font-size: 0.95rem;
-  font-weight: 600;
-  color: #333;
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--text);
   margin: 0 0 0.6rem;
+  letter-spacing: -0.01em;
 }
 
 .chart-canvas-wrap {
@@ -404,10 +405,10 @@ function hidePackedTooltip() {
   gap: 0.25rem;
   width: 320px;
   overflow: auto;
-  padding: 0;
-  background: transparent;
-  border: 0;
-  border-radius: 0;
+  padding: 0.55rem 0.6rem;
+  background: var(--surface-soft);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
   align-self: center;
 }
 
@@ -415,7 +416,7 @@ function hidePackedTooltip() {
   display: flex;
   align-items: center;
   gap: 0.35rem;
-  color: #374151;
+  color: var(--text-muted);
   font-size: 0.78rem;
   line-height: 1.25;
 }
