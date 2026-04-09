@@ -1,10 +1,11 @@
-<template>
+﻿<template>
   <div class="filter-bar">
     <div class="filter-left">
       <label class="filter-label">Year</label>
       <select v-model="selectedYear" class="year-select">
         <option v-for="y in availableYears" :key="y" :value="y">{{ y }}</option>
       </select>
+
       <label class="filter-label">Tags</label>
       <div ref="tagPickerRef" class="tag-picker">
         <button type="button" class="tag-picker-btn" @click="isTagPickerOpen = !isTagPickerOpen">
@@ -27,13 +28,15 @@
           <p v-if="!availableTags.length" class="tag-empty">No tags available.</p>
         </div>
       </div>
-      <button
-        class="remake-btn"
-        :disabled="remaking"
-        @click="handleRemakeXlsx"
-      >
-        {{ remaking ? 'Remaking…' : 'Remake XLSX' }}
+
+      <button class="remake-btn" :disabled="remaking || reloading" @click="handleRemakeXlsx">
+        {{ remaking ? 'Remaking...' : 'Remake XLSX' }}
       </button>
+
+      <button class="reload-btn" :disabled="reloading || remaking" @click="handleReloadXlsx">
+        {{ reloading ? 'Reloading...' : 'Reload XLSX' }}
+      </button>
+
       <button
         type="button"
         class="privacy-btn"
@@ -43,31 +46,44 @@
         {{ privacyMode ? 'Privacy: On' : 'Privacy: Off' }}
       </button>
     </div>
+
     <div v-if="showSearch" class="filter-right">
       <input
         v-model="search"
         class="search-input"
-        placeholder="Search item or notes…"
+        placeholder="Search item or notes..."
         type="search"
       />
     </div>
-    <p v-if="remakeMessage" class="remake-message">{{ remakeMessage }}</p>
+
   </div>
 </template>
 
 <script setup>
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useGlobalFilters } from '../../composables/useGlobalFilters.js'
+import { useToast } from '../../composables/useToast.js'
 
 defineProps({
   showSearch: { type: Boolean, default: false },
 })
 
-const { availableYears, selectedYear, selectedTags, privacyMode, search, transactions, refreshTransactions } = useGlobalFilters()
+const {
+  availableYears,
+  selectedYear,
+  selectedTags,
+  privacyMode,
+  search,
+  transactions,
+  refreshTransactions,
+  reloadFromXlsx,
+} = useGlobalFilters()
+
 const remaking = ref(false)
-const remakeMessage = ref('')
+const reloading = ref(false)
 const isTagPickerOpen = ref(false)
 const tagPickerRef = ref(null)
+const { showToast } = useToast()
 
 function parseTags(tags) {
   if (!tags || typeof tags !== 'string') return []
@@ -108,7 +124,7 @@ onBeforeUnmount(() => {
 
 async function handleRemakeXlsx() {
   remaking.value = true
-  remakeMessage.value = ''
+  showToast('Remaking XLSX...', { type: 'info', persistent: true })
 
   try {
     const response = await fetch('/api/xlsx/reformat', { method: 'POST' })
@@ -119,11 +135,25 @@ async function handleRemakeXlsx() {
     }
 
     await refreshTransactions()
-    remakeMessage.value = data?.message || 'XLSX remake completed.'
+    showToast(data?.message || 'XLSX remake completed.', { type: 'success' })
   } catch (error) {
-    remakeMessage.value = error?.message || 'Failed to remake XLSX file.'
+    showToast(error?.message || 'Failed to remake XLSX file.', { type: 'error', duration: 3000 })
   } finally {
     remaking.value = false
+  }
+}
+
+async function handleReloadXlsx() {
+  reloading.value = true
+  showToast('Reloading XLSX data...', { type: 'info', persistent: true })
+
+  try {
+    await reloadFromXlsx()
+    showToast('XLSX data reloaded.', { type: 'success' })
+  } catch {
+    showToast('Failed to reload XLSX data.', { type: 'error', duration: 3000 })
+  } finally {
+    reloading.value = false
   }
 }
 </script>
@@ -145,8 +175,19 @@ async function handleRemakeXlsx() {
   backdrop-filter: blur(4px);
 }
 
-.filter-left  { display: flex; align-items: center; gap: 0.65rem; flex-wrap: wrap; }
-.filter-right { display: flex; align-items: center; margin-left: auto; }
+.filter-left {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  flex-wrap: wrap;
+}
+
+.filter-right {
+  display: flex;
+  align-items: center;
+  margin-left: auto;
+}
+
 .filter-label {
   font-size: 0.74rem;
   font-weight: 700;
@@ -167,6 +208,7 @@ async function handleRemakeXlsx() {
   outline: none;
   transition: border-color var(--transition), box-shadow var(--transition);
 }
+
 .year-select:focus {
   border-color: var(--ring);
   box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
@@ -274,9 +316,11 @@ async function handleRemakeXlsx() {
   color: var(--text);
   transition: border-color var(--transition), box-shadow var(--transition);
 }
+
 .search-input::placeholder {
   color: var(--text-faint);
 }
+
 .search-input:focus {
   border-color: var(--ring);
   box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
@@ -294,11 +338,37 @@ async function handleRemakeXlsx() {
   cursor: pointer;
   transition: transform var(--transition), box-shadow var(--transition), opacity var(--transition);
 }
+
 .remake-btn:hover:not(:disabled) {
   transform: translateY(-1px);
   box-shadow: 0 10px 18px rgba(15, 62, 168, 0.3);
 }
+
 .remake-btn:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
+.reload-btn {
+  min-height: 36px;
+  padding: 0.35rem 0.82rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: border-color var(--transition), box-shadow var(--transition), background var(--transition);
+}
+
+.reload-btn:hover:not(:disabled),
+.reload-btn:focus:not(:disabled) {
+  border-color: var(--ring);
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.18);
+}
+
+.reload-btn:disabled {
   opacity: 0.65;
   cursor: not-allowed;
 }
@@ -325,13 +395,6 @@ async function handleRemakeXlsx() {
 .privacy-btn:hover,
 .privacy-btn:focus {
   border-color: var(--ring);
-}
-
-.remake-message {
-  margin: 0;
-  font-size: 0.8rem;
-  color: var(--text-muted);
-  flex-basis: 100%;
 }
 
 @media (max-width: 900px) {

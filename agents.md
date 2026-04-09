@@ -59,7 +59,9 @@ Backend:
 
 Frontend:
 - `frontend/src/composables/useGlobalFilters.js` — shared year/search/transactions state
+- `frontend/src/composables/useToast.js` — shared app-level toast state/service
 - `frontend/src/components/FilterBar.vue` — year/search + Remake XLSX button
+- `frontend/src/components/ui/ToastContainer.vue` — global centered toast renderer
 - `frontend/src/components/DataTable.vue` — generic table component with column-defined alignment
 - `frontend/src/components/TransactionsTable.vue` — transaction-specific wrapper built on `DataTable`
 - `frontend/src/components/charts/BubbleChart.vue` — reusable bubble chart supporting standard x/y/r mode and packed-bubble mode
@@ -72,6 +74,7 @@ Frontend:
 
 ## UI/API Expectations
 - Filter bar `Remake XLSX` button must call `POST /api/xlsx/reformat`.
+- Filter bar should include a `Reload XLSX` button that force-refreshes years and transactions from backend XLSX-backed endpoints.
 - After remake succeeds, frontend should refresh transactions.
 - Transactions tables should include: Date, Item, Category, Cost, Store, Tags, Notes.
 - Search filtering should match `Item` and `Notes` fields only.
