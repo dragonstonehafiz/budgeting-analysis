@@ -24,10 +24,10 @@ Purpose: concise instructions for AI/code agents working in this repo.
 
 ## Current Data Contract
 Workbook columns (required, case-sensitive):
-- `ID, Item, Category, Cost, Date, Store, Tags, Notes`
+- `Item, Category, Cost, Date, Store, Tags, Notes`
 
 Transactions API response fields (in this order):
-- `ID, Item, Category, Cost, Date, Store, Tags, Notes`
+- `Item, Category, Cost, Date, Store, Tags, Notes`
 
 Notes:
 - Year filtering/listing is computed from `Date` in the backend.

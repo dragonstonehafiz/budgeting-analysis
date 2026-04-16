@@ -69,7 +69,7 @@ const txColumns = [
 
 const tableRows = computed(() =>
   props.transactions.map((tx, index) => ({
-    id: tx.ID ?? index,
+    id: `${tx.Date ?? ''}-${tx.Item ?? ''}-${tx.Cost ?? ''}-${index}`,
     date: tx.Date,
     item: tx.Item,
     category: tx.Category,

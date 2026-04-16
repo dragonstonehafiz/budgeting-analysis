@@ -23,7 +23,7 @@ def get_transactions(year: str = Query(default=None, description="Filter by year
         result = result[result["Date"] <= pd.to_datetime(end_date)]
 
     result["Date"] = result["Date"].dt.strftime("%Y-%m-%d")
-    response_cols = ["ID", "Item", "Category", "Cost", "Date", "Store", "Tags", "Notes"]
+    response_cols = ["Item", "Category", "Cost", "Date", "Store", "Tags", "Notes"]
     return result[response_cols].to_dict(orient="records")
 
 

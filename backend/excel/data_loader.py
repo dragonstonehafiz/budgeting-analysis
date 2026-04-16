@@ -13,10 +13,10 @@ def load_df(filepath: str | Path = "data/purchases.xlsx") -> pd.DataFrame:
 
     Ensures required columns exist and coerces common columns to stable types.
     Expected workbook schema:
-    ID, Item, Category, Cost, Date, Store, Tags, Notes.
+    Item, Category, Cost, Date, Store, Tags, Notes.
 
     Required columns (case-sensitive):
-    - ID, Item, Category, Cost, Date, Store, Tags, Notes
+    - Item, Category, Cost, Date, Store, Tags, Notes
 
     Returns:
         pd.DataFrame: loaded DataFrame with some columns coerced to str.
@@ -35,7 +35,7 @@ def load_df(filepath: str | Path = "data/purchases.xlsx") -> pd.DataFrame:
     df = pd.read_excel(filepath)
 
     # Normalize required columns
-    required = ["ID", "Item", "Category", "Cost", "Date", "Store", "Tags", "Notes"]
+    required = ["Item", "Category", "Cost", "Date", "Store", "Tags", "Notes"]
     missing = [c for c in required if c not in df.columns]
     if missing:
         raise ValueError(f"Missing required columns in Excel file: {missing}")
@@ -48,7 +48,6 @@ def load_df(filepath: str | Path = "data/purchases.xlsx") -> pd.DataFrame:
     df["Cost"] = pd.to_numeric(df["Cost"], errors="coerce")
     # Parse dates if not already
     df["Date"] = pd.to_datetime(df["Date"], errors="coerce")
-    df["ID"] = pd.to_numeric(df["ID"], errors="coerce").fillna(0).astype(int)
     df["Store"] = df["Store"].fillna("").astype(str)
     df["Tags"] = df["Tags"].fillna("").astype(str)
     df["Notes"] = df["Notes"].fillna("").astype(str)

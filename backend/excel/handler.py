@@ -88,16 +88,15 @@ def remake_xlsx_file(xlsx_path: str = "data/purchases.xlsx") -> None:
         if cell.value:
             headers[str(cell.value).strip()] = letter
 
-    # If expected headers are absent, we'll initialize columns A-H using the new layout
+    # If expected headers are absent, we'll initialize columns A-G using the new layout
     default_cols = {
-        "ID": ["A", 8],
-        "Item": ["B", 15],
-        "Category": ["C", 15],
-        "Cost": ["D", 10],
-        "Date": ["E", 12],
-        "Store": ["F", 15],
-        "Tags": ["G", 12],
-        "Notes": ["H", 15],
+        "Item": ["A", 15],
+        "Category": ["B", 15],
+        "Cost": ["C", 10],
+        "Date": ["D", 12],
+        "Store": ["E", 15],
+        "Tags": ["F", 12],
+        "Notes": ["G", 15],
     }
 
     # Ensure these headers exist in the sheet; xlsx_init_column will set header cell values
@@ -116,8 +115,8 @@ def remake_xlsx_file(xlsx_path: str = "data/purchases.xlsx") -> None:
         if item_cell.value is None:
             continue
         row_values = []
-        for c in range(1, ws.max_column + 1):
-            letter = get_column_letter(c)
+        for key in default_cols:
+            letter = cols[key][0]
             row_values.append(ws[f"{letter}{r}"].value)
         data_rows.append(row_values)
 
@@ -170,25 +169,25 @@ def remake_xlsx_file(xlsx_path: str = "data/purchases.xlsx") -> None:
 
     # Clear existing data rows (from row 2 onward) to rewrite sorted rows
     for r in range(2, ws.max_row + 1):
-        for c in range(1, ws.max_column + 1):
-            letter = get_column_letter(c)
+        for key in default_cols:
+            letter = cols[key][0]
             ws[f"{letter}{r}"] = None
 
     # Write back sorted rows starting at row 2
     write_row = 2
     for row in sorted_rows:
-        for idx, val in enumerate(row, start=1):
-            letter = get_column_letter(idx)
-            ws[f"{letter}{write_row}"] = val
+        for idx, key in enumerate(default_cols, start=1):
+            letter = cols[key][0]
+            ws[f"{letter}{write_row}"] = row[idx - 1]
         write_row += 1
         
-    # Reset autofilter across A:H
+    # Reset autofilter across A:G
     try:
-        ws.auto_filter.ref = "A1:H1"
+        ws.auto_filter.ref = "A1:G1"
     except Exception:
         pass
 
-    # Recreate category DV and CF using column C
+    # Recreate category DV and CF using column B
     xlsx_create_category_dv(ws, cols.get("Category")[0])
     xlsx_create_category_cf(ws, cols.get("Category")[0])
 

@@ -294,7 +294,6 @@ const visibleSubscriptionTransactions = computed(() =>
   groupedSubscriptions.value
     .filter((group) => visibleSubscriptionKeys.value.has(group.key))
     .flatMap((group) => group.entries.map((entry) => ({
-      ID: entry.ID,
       Item: entry.Item,
       Category: entry.Category,
       Cost: entry.Cost,
