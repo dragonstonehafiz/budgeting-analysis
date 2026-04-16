@@ -4,6 +4,7 @@
     <div class="kpi-row kpi-row--2">
       <StatCard label="Total Spent"   :value="stats.totalSpent"  format="currency" :privacyMode="privacyMode" />
       <StatCard label="Items Bought"  :value="stats.itemsBought" format="integer" :privacyMode="privacyMode" />
+      <StatCard label="Total Data"    :value="stats.totalData"   format="text" />
     </div>
 
     <!-- Row 2 -->
@@ -47,7 +48,7 @@ defineProps({
   display: grid;
   gap: 0.75rem;
 }
-.kpi-row--2 { grid-template-columns: repeat(2, 1fr); }
+.kpi-row--2 { grid-template-columns: repeat(3, 1fr); }
 .kpi-row--5 { grid-template-columns: repeat(5, 1fr); }
 .kpi-row--4 { grid-template-columns: repeat(4, 1fr); }
 

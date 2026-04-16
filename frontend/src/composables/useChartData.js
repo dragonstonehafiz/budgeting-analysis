@@ -504,6 +504,7 @@ export function toTopItemsSeries(transactions, topN = 10) {
  *   avgMonthlySpend: number,
  *   avgYearlySpend: number,
  *   spendingVolatility: number,
+ *   totalData: string,
  * }}
  */
 export function computeStats(transactions) {
@@ -512,6 +513,7 @@ export function computeStats(transactions) {
       totalSpent: 0, itemsBought: 0, averageSpend: 0,
       p25: 0, median: 0, p75: 0, stdDev: 0,
       avgWeeklySpend: 0, avgMonthlySpend: 0, avgYearlySpend: 0, spendingVolatility: 0,
+      totalData: '0 days',
     }
   }
 
@@ -534,6 +536,7 @@ export function computeStats(transactions) {
   const dates     = transactions.map(t => new Date(t.Date)).sort((a, b) => a - b)
   const dayRange  = Math.max(1, (dates[dates.length - 1] - dates[0]) / 86_400_000)
   const weekRange = dayRange / 7
+  const totalData = formatDurationFromDate(dates[0], new Date())
 
   // Average of actual monthly bucket totals (not total / months elapsed)
   const monthlyMap = {}
@@ -572,5 +575,32 @@ export function computeStats(transactions) {
     avgMonthlySpend,
     avgYearlySpend,
     spendingVolatility,
+    totalData,
   }
+}
+
+function formatDurationFromDate(startDate, endDate) {
+  if (!(startDate instanceof Date) || !(endDate instanceof Date) || isNaN(startDate) || isNaN(endDate)) {
+    return '0days'
+  }
+
+  let years = endDate.getFullYear() - startDate.getFullYear()
+  let months = endDate.getMonth() - startDate.getMonth()
+  let days = endDate.getDate() - startDate.getDate()
+
+  if (days < 0) {
+    months -= 1
+    days += new Date(endDate.getFullYear(), endDate.getMonth(), 0).getDate()
+  }
+
+  if (months < 0) {
+    years -= 1
+    months += 12
+  }
+
+  const parts = []
+  if (years) parts.push(`${years} ${years === 1 ? 'year' : 'years'}`)
+  if (months) parts.push(`${months} ${months === 1 ? 'month' : 'months'}`)
+  if (days || parts.length === 0) parts.push(`${days} ${days === 1 ? 'day' : 'days'}`)
+  return parts.join(' ')
 }

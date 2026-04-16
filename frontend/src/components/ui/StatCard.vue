@@ -1,7 +1,7 @@
 <template>
   <div class="stat-card">
     <div class="stat-label">{{ label }}</div>
-    <div class="stat-value">{{ formattedValue }}</div>
+    <div class="stat-value" :class="{ 'stat-value--text': format === 'text' }">{{ formattedValue }}</div>
   </div>
 </template>
 
@@ -10,14 +10,15 @@ import { computed } from 'vue'
 
 const props = defineProps({
   label:  { type: String,  required: true },
-  value:  { type: Number,  required: true },
-  /** 'currency' | 'currency-rate' | 'integer' | 'percent' */
+  value:  { type: [Number, String], required: true },
+  /** 'currency' | 'currency-rate' | 'integer' | 'percent' | 'text' */
   format: { type: String,  default: 'currency' },
   privacyMode: { type: Boolean, default: false },
 })
 
 const formattedValue = computed(() => {
   const v = props.value
+  if (props.format === 'text') return String(v || 'â€”')
   if (!isFinite(v)) return '—'
   if (props.privacyMode && (props.format === 'currency' || props.format === 'currency-rate')) {
     return props.format === 'currency-rate' ? '$•••• / period' : '$••••'
@@ -46,6 +47,7 @@ const formattedValue = computed(() => {
   flex-direction: column;
   gap: 0.35rem;
   min-width: 0;
+  overflow: hidden;
   box-shadow: var(--shadow-sm);
   transition: transform var(--transition), box-shadow var(--transition), border-color var(--transition);
 }
@@ -56,7 +58,7 @@ const formattedValue = computed(() => {
   inset: 0 auto auto 0;
   width: 100%;
   height: 2px;
-  border-radius: var(--radius-md) var(--radius-md) 0 0;
+  border-radius: inherit;
   background: linear-gradient(90deg, rgba(15, 62, 168, 0.85), rgba(56, 189, 248, 0.7));
 }
 
@@ -83,5 +85,14 @@ const formattedValue = computed(() => {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.stat-value--text {
+  letter-spacing: normal;
+  font-variant-numeric: normal;
+  white-space: normal;
+  overflow: visible;
+  text-overflow: clip;
+  word-spacing: 0.24em;
 }
 </style>
