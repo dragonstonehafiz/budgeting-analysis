@@ -80,6 +80,7 @@ Frontend:
 - Search filtering should match `Item` and `Notes` fields only.
 - Filter bar should include a tags multi-select; selecting multiple tags must apply OR matching against comma-separated `Tags` values.
 - Filter bar should include a privacy mode toggle that masks always-visible dollar labels across cards/tables/charts while leaving tooltip values available on hover.
+- Home page should show `Spending by Category` and `Monthly Average Spend by Category` donut charts side by side, with `Spending by Month` and `Spending at Specific Stores` side by side below them when a specific year is selected. When `All` is selected, the store chart should remain visible by itself in that lower row.
 - Category page should include a summary table for items bought more than 5 times, showing item name, times bought, total spent, and average per item.
 - Frontend route `/subscriptions` should only include transactions where `Category` is `Digital Subscriptions`.
 - Subscriptions page should provide frequency tabs with `All` first, then: `One-Time, Weekly, Monthly, Every Two Months, Every Six Months, Yearly, Irregular` when present.

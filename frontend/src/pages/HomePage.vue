@@ -66,7 +66,7 @@
     </section>
 
     <!-- ── Donut charts ──────────────────────────────────────────────── -->
-    <div class="donut-row" :class="{ 'donut-row--single': selectedYear === 'All' }">
+    <div class="donut-row">
       <section class="chart-section">
         <DonutChart
           :key="`cat-${selectedYear}-${privacyMode}`"
@@ -78,11 +78,35 @@
           :privacyMode="privacyMode"
         />
       </section>
+      <section class="chart-section">
+        <DonutChart
+          :key="`cat-monthly-average-${selectedYear}-${privacyMode}`"
+          :series="categoryMonthlyAverageDonutSeries"
+          title="Monthly Average Spend by Category"
+          :topN="0"
+          :showLegend="true"
+          :height="360"
+          :privacyMode="privacyMode"
+        />
+      </section>
+    </div>
+    <div class="donut-row" :class="{ 'donut-row--single': selectedYear === 'All' }">
       <section v-if="selectedYear !== 'All'" class="chart-section">
         <DonutChart
           :key="`month-${selectedYear}-${privacyMode}`"
           :series="monthlyDonutSeries"
           title="Spending by Month"
+          :topN="0"
+          :showLegend="true"
+          :height="360"
+          :privacyMode="privacyMode"
+        />
+      </section>
+      <section class="chart-section">
+        <DonutChart
+          :key="`store-${selectedYear}-${privacyMode}`"
+          :series="storeDonutSeries"
+          title="Spending at Specific Stores"
           :topN="0"
           :showLegend="true"
           :height="360"
@@ -151,7 +175,9 @@ import {
   toMovingAverageSeries,
   toCumulativeCategorySeries,
   toCategoryDonutSeries,
+  toCategoryMonthlyAverageDonutSeries,
   toMonthlyDonutSeries,
+  toStoreDonutSeries,
   computeAverage,
   toTopItemsSeries,
   computeStats,
@@ -236,7 +262,9 @@ const categorySeries    = computed(() => activeChart.value !== 'category'   ? []
 
 // ── Donut charts ──────────────────────────────────────────────────────────
 const categoryDonutSeries = computed(() => toCategoryDonutSeries(filteredTransactions.value))
+const categoryMonthlyAverageDonutSeries = computed(() => toCategoryMonthlyAverageDonutSeries(filteredTransactions.value))
 const monthlyDonutSeries  = computed(() => toMonthlyDonutSeries(filteredTransactions.value))
+const storeDonutSeries = computed(() => toStoreDonutSeries(filteredTransactions.value))
 
 // ── Bar chart & table ──────────────────────────────────────────────────────
 const topItems = computed(() => toTopItemsSeries(filteredTransactions.value, 10))

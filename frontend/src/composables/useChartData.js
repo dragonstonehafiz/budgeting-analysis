@@ -309,6 +309,49 @@ export function toCategoryDonutSeries(transactions) {
 }
 
 /**
+ * Groups transactions by Category and returns average monthly spend across
+ * the full visible month range, including zero-spend months.
+ *
+ * @param {Array} transactions
+ * @returns {Array<{label: string, value: number, color: string}>}
+ */
+export function toCategoryMonthlyAverageDonutSeries(transactions) {
+  if (!transactions || transactions.length === 0) return []
+
+  const totalsByCategory = new Map()
+  let minMonthIndex = null
+  let maxMonthIndex = null
+
+  for (const tx of transactions) {
+    const date = new Date(tx.Date)
+    if (isNaN(date)) continue
+
+    const cost = parseFloat(tx.Cost)
+    if (isNaN(cost)) continue
+
+    const category = tx.Category || 'Miscellaneous'
+    totalsByCategory.set(category, (totalsByCategory.get(category) ?? 0) + cost)
+
+    const monthIndex = (date.getFullYear() * 12) + date.getMonth()
+    minMonthIndex = minMonthIndex == null ? monthIndex : Math.min(minMonthIndex, monthIndex)
+    maxMonthIndex = maxMonthIndex == null ? monthIndex : Math.max(maxMonthIndex, monthIndex)
+  }
+
+  if (minMonthIndex == null || maxMonthIndex == null) return []
+
+  const monthCount = (maxMonthIndex - minMonthIndex) + 1
+  if (monthCount <= 0) return []
+
+  return Array.from(totalsByCategory.entries())
+    .map(([label, total]) => ({
+      label,
+      value: parseFloat((total / monthCount).toFixed(2)),
+      color: getCategoryColor(label),
+    }))
+    .sort((a, b) => b.value - a.value)
+}
+
+/**
  * Groups transactions by calendar month and returns donut-ready series.
  * Month name and sort order are derived from the Date field — Month/MonthNum
  * fields are not required.
@@ -340,6 +383,32 @@ export function toMonthlyDonutSeries(transactions) {
       label: key.split('_')[1],
       value: parseFloat(value.toFixed(2)),
     }))
+}
+
+/**
+ * Groups transactions by Store and returns donut-ready series.
+ *
+ * @param {Array} transactions
+ * @returns {Array<{label: string, value: number}>}
+ */
+export function toStoreDonutSeries(transactions) {
+  if (!transactions || transactions.length === 0) return []
+
+  const map = new Map()
+  for (const tx of transactions) {
+    const store = String(tx.Store || '').trim()
+    if (!store) continue
+    const cost = parseFloat(tx.Cost)
+    if (isNaN(cost)) continue
+    map.set(store, (map.get(store) ?? 0) + cost)
+  }
+
+  return Array.from(map.entries())
+    .map(([label, value]) => ({
+      label,
+      value: parseFloat(value.toFixed(2)),
+    }))
+    .sort((a, b) => b.value - a.value)
 }
 
 /**
