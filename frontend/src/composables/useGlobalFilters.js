@@ -11,6 +11,8 @@
  */
 import { ref, watch } from 'vue'
 
+const STORAGE_KEY = 'budgeting-analysis.global-filters'
+
 // Singleton state
 const availableYears = ref(['Last 365 Days', 'All'])
 const selectedYear = ref('Last 365 Days')
@@ -21,6 +23,62 @@ const transactions = ref([])
 const loading = ref(false)
 
 let yearsLoaded = false // guard so we only hit /years once
+let sessionStateHydrated = false
+
+function canUseSessionStorage() {
+  return typeof window !== 'undefined' && typeof window.sessionStorage !== 'undefined'
+}
+
+function sanitizeStoredState(parsed) {
+  if (!parsed || typeof parsed !== 'object') return null
+
+  return {
+    selectedYear: typeof parsed.selectedYear === 'string' ? parsed.selectedYear : 'Last 365 Days',
+    search: typeof parsed.search === 'string' ? parsed.search : '',
+    selectedTags: Array.isArray(parsed.selectedTags)
+      ? parsed.selectedTags.filter((tag) => typeof tag === 'string')
+      : [],
+    privacyMode: typeof parsed.privacyMode === 'boolean' ? parsed.privacyMode : false,
+  }
+}
+
+function hydrateSessionState() {
+  if (sessionStateHydrated || !canUseSessionStorage()) return
+
+  sessionStateHydrated = true
+
+  try {
+    const raw = window.sessionStorage.getItem(STORAGE_KEY)
+    if (!raw) return
+
+    const saved = sanitizeStoredState(JSON.parse(raw))
+    if (!saved) return
+
+    selectedYear.value = saved.selectedYear
+    search.value = saved.search
+    selectedTags.value = saved.selectedTags
+    privacyMode.value = saved.privacyMode
+  } catch {
+    // Ignore malformed session state and keep defaults.
+  }
+}
+
+function persistSessionState() {
+  if (!sessionStateHydrated || !canUseSessionStorage()) return
+
+  const payload = {
+    selectedYear: selectedYear.value,
+    search: search.value,
+    selectedTags: selectedTags.value,
+    privacyMode: privacyMode.value,
+  }
+
+  try {
+    window.sessionStorage.setItem(STORAGE_KEY, JSON.stringify(payload))
+  } catch {
+    // Ignore storage failures and continue using in-memory state.
+  }
+}
 
 // Data fetching
 async function fetchTransactions(year) {
@@ -61,6 +119,7 @@ async function fetchYears(force = false) {
  * Fetches years on first call only; always ensures transactions are loaded.
  */
 async function initFilters() {
+  hydrateSessionState()
   await fetchYears()
 
   // Fetch transactions if not yet loaded (e.g. first page visit)
@@ -71,6 +130,7 @@ async function initFilters() {
 
 // Re-fetch whenever the year changes.
 watch(selectedYear, (year) => fetchTransactions(year))
+watch([selectedYear, search, selectedTags, privacyMode], persistSessionState, { deep: true })
 
 async function refreshTransactions() {
   await fetchTransactions(selectedYear.value)
