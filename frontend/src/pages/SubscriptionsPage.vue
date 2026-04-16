@@ -4,10 +4,20 @@
 
     <h1 class="section-title">Digital Subscriptions</h1>
     <div class="top-controls">
-      <label class="toggle-row">
-        <input v-model="includeStaleSubscriptions" type="checkbox" />
-        <span>Include items that have not had a purchase in the last 365 days</span>
-      </label>
+      <div class="toggle-row-group">
+        <label class="toggle-row">
+          <input v-model="includeStaleSubscriptions" type="checkbox" />
+          <span>Include items that have not had a purchase in the last 365 days</span>
+        </label>
+        <label class="toggle-row">
+          <input v-model="ignoreSoftware" type="checkbox" />
+          <span>Ignore items named Software</span>
+        </label>
+        <label class="toggle-row">
+          <input v-model="requireMinimumChargeCount" type="checkbox" />
+          <span>Only include items with at least 6 charges</span>
+        </label>
+      </div>
       <div class="frequency-tabs">
         <button
           v-for="tab in frequencyTabs"
@@ -78,7 +88,9 @@ import { useGlobalFilters } from '../composables/useGlobalFilters.js'
 const { search, selectedTags, privacyMode, transactions, initFilters } = useGlobalFilters()
 
 onMounted(() => initFilters())
-const includeStaleSubscriptions = ref(false)
+const includeStaleSubscriptions = ref(true)
+const ignoreSoftware = ref(true)
+const requireMinimumChargeCount = ref(true)
 const activeFrequencyTab = ref('All')
 
 const TAB_ORDER = [
@@ -114,6 +126,10 @@ function normalizeSubscriptionName(name) {
   return String(name || '').trim()
 }
 
+function isSoftwareSubscription(name) {
+  return normalizeSubscriptionName(name).toLowerCase() === 'software'
+}
+
 function toValidCost(value) {
   const cost = Number(value)
   return Number.isFinite(cost) ? cost : null
@@ -134,10 +150,27 @@ function cadenceFromAvgInterval(avgIntervalDays, chargesCount) {
   return 'Irregular'
 }
 
+function averageRecentIntervalDays(entries, recentChargeCount = 6) {
+  const recentEntries = entries.slice(-recentChargeCount)
+  const intervals = []
+
+  for (let i = 1; i < recentEntries.length; i += 1) {
+    const diffMs = recentEntries[i].date.getTime() - recentEntries[i - 1].date.getTime()
+    if (diffMs > 0) intervals.push(diffMs / 86_400_000)
+  }
+
+  if (!intervals.length) return null
+  return intervals.reduce((sum, d) => sum + d, 0) / intervals.length
+}
+
 const subscriptionTransactions = computed(() => {
   let txs = transactions.value.filter(
     (tx) => String(tx.Category || '').trim().toLowerCase() === 'digital subscriptions'
   )
+
+  if (ignoreSoftware.value) {
+    txs = txs.filter((tx) => !isSoftwareSubscription(tx.Item))
+  }
 
   const q = search.value.trim().toLowerCase()
   if (q) {
@@ -200,14 +233,7 @@ const summaryRows = computed(() =>
     const lowestPrice = Math.min(...costs)
     const mostRecentEntry = group.entries[group.entries.length - 1]
 
-    const intervals = []
-    for (let i = 1; i < group.entries.length; i += 1) {
-      const diffMs = group.entries[i].date.getTime() - group.entries[i - 1].date.getTime()
-      if (diffMs > 0) intervals.push(diffMs / 86_400_000)
-    }
-    const avgIntervalDays = intervals.length
-      ? intervals.reduce((sum, d) => sum + d, 0) / intervals.length
-      : null
+    const avgIntervalDays = averageRecentIntervalDays(group.entries)
 
     return {
       subscriptionKey: group.key,
@@ -237,8 +263,14 @@ const filteredSummaryRowsByStale = computed(() =>
   )
 )
 
+const filteredSummaryRows = computed(() =>
+  filteredSummaryRowsByStale.value.filter((row) =>
+    !requireMinimumChargeCount.value || row.chargesCount >= 6
+  )
+)
+
 const frequencyTabs = computed(() => {
-  const set = new Set(filteredSummaryRowsByStale.value.map((row) => row.cadence))
+  const set = new Set(filteredSummaryRows.value.map((row) => row.cadence))
   return ['All', ...TAB_ORDER.filter((tab) => set.has(tab))]
 })
 
@@ -250,8 +282,8 @@ watch(frequencyTabs, (tabs) => {
 
 const subscriptionSummaryRows = computed(() =>
   activeFrequencyTab.value === 'All'
-    ? filteredSummaryRowsByStale.value
-    : filteredSummaryRowsByStale.value.filter((row) => row.cadence === activeFrequencyTab.value)
+    ? filteredSummaryRows.value
+    : filteredSummaryRows.value.filter((row) => row.cadence === activeFrequencyTab.value)
 )
 
 const visibleSubscriptionKeys = computed(() =>
@@ -323,11 +355,17 @@ function formatCurrency(value) {
   margin-bottom: 0.95rem;
 }
 
+.toggle-row-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  margin-bottom: 0.7rem;
+}
+
 .toggle-row {
   display: inline-flex;
   align-items: center;
   gap: 0.5rem;
-  margin-bottom: 0.7rem;
   font-size: 0.84rem;
   color: var(--text-muted);
   font-weight: 500;

@@ -83,8 +83,11 @@ Frontend:
 - Category page should include a summary table for items bought more than 5 times, showing item name, times bought, total spent, and average per item.
 - Frontend route `/subscriptions` should only include transactions where `Category` is `Digital Subscriptions`.
 - Subscriptions page should provide frequency tabs with `All` first, then: `One-Time, Weekly, Monthly, Every Two Months, Every Six Months, Yearly, Irregular` when present.
-- Subscriptions page should include a default-off toggle to include/exclude subscriptions with no purchases in the last 365 days.
+- Subscriptions page should include a default-on toggle to include/exclude subscriptions with no purchases in the last 365 days.
+- Subscriptions page should include a default-on toggle to ignore subscription items named `Software`.
+- Subscriptions page should include a default-on toggle to require a minimum of 6 charges before a subscription is included.
 - Subscriptions page should show KPI cards below the frequency selector and a packed bubble chart in its own card above the table card.
+- Subscriptions page cadence labels should be derived from the average interval across the most recent six charges for each subscription, or fewer charges when less history exists.
 - Frontend route `/settings` should list unique stores from `/api/transactions/` and show mapped store icons when available.
 
 ## Safety Rules
