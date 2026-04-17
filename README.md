@@ -10,6 +10,13 @@ A personal spending dashboard built as a web app. The backend exposes a FastAPI 
 - **Store icons** — normalised store-name to icon mapping shown in the Settings page
 - **XLSX remake** — reformat and sort the source spreadsheet in one click, with automatic backup
 
+## Screenshots
+
+<p>
+  <img src="screenshots/budgetingVer3_1.png" alt="Budgeting Analysis dashboard screenshot" width="420">
+  <img src="screenshots/budgetingVer3_4.png" alt="Budgeting Analysis analytics screenshot" width="420">
+</p>
+
 ## Tech Stack
 
 | Layer    | Technologies                       |
