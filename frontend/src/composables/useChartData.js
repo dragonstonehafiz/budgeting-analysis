@@ -536,7 +536,7 @@ export function computeStats(transactions) {
   const dates     = transactions.map(t => new Date(t.Date)).sort((a, b) => a - b)
   const dayRange  = Math.max(1, (dates[dates.length - 1] - dates[0]) / 86_400_000)
   const weekRange = dayRange / 7
-  const totalData = formatDurationFromDate(dates[0], new Date())
+  const totalData = formatDurationFromDate(dates[0], dates[dates.length - 1])
 
   // Average of actual monthly bucket totals (not total / months elapsed)
   const monthlyMap = {}
