@@ -2,8 +2,7 @@
   <div class="page-container">
     <FilterBar :showSearch="true" />
 
-    <h1 class="section-title">Digital Subscriptions</h1>
-    <div class="top-controls">
+    <div class="controls-card">
       <div class="toggle-row-group">
         <label class="toggle-row">
           <input v-model="includeStaleSubscriptions" type="checkbox" />
@@ -29,7 +28,7 @@
           {{ tab }}
         </button>
       </div>
-      <div class="kpi-row kpi-row--top">
+      <div class="kpi-grid">
         <StatCard label="Subscriptions Tracked" :value="subscriptionSummaryRows.length" format="integer" />
         <StatCard label="Subscription Charges" :value="visibleSubscriptionTransactions.length" format="integer" />
         <StatCard label="Total Spent" :value="totalSubscriptionSpendSelected" format="currency" :privacyMode="privacyMode" />
@@ -350,8 +349,13 @@ function formatCurrency(value) {
   letter-spacing: -0.01em;
 }
 
-.top-controls {
+.controls-card {
+  background: linear-gradient(180deg, #ffffff 0%, #fbfdff 100%);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 1.2rem 1.35rem;
   margin-bottom: 0.95rem;
+  box-shadow: var(--shadow-sm);
 }
 
 .toggle-row-group {
@@ -406,14 +410,11 @@ function formatCurrency(value) {
   box-shadow: 0 8px 16px rgba(15, 62, 168, 0.24);
 }
 
-.kpi-row {
+.kpi-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 0.75rem;
-}
-
-.kpi-row--top {
-  margin-bottom: 0.85rem;
+  margin-top: 0.85rem;
 }
 
 .bubble-chart-wrap {
@@ -426,7 +427,7 @@ function formatCurrency(value) {
 }
 
 @media (max-width: 860px) {
-  .kpi-row {
+  .kpi-grid {
     grid-template-columns: 1fr;
   }
 }
