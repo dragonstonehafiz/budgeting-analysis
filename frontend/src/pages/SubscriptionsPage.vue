@@ -12,10 +12,7 @@
           <input v-model="ignoreSoftware" type="checkbox" />
           <span>Ignore items named Software</span>
         </label>
-        <label class="toggle-row">
-          <input v-model="requireMinimumChargeCount" type="checkbox" />
-          <span>Only include items with at least 6 charges</span>
-        </label>
+
       </div>
       <div class="frequency-tabs">
         <button
@@ -32,6 +29,7 @@
         <StatCard label="Subscriptions Tracked" :value="subscriptionSummaryRows.length" format="integer" />
         <StatCard label="Subscription Charges" :value="visibleSubscriptionTransactions.length" format="integer" />
         <StatCard label="Total Spent" :value="totalSubscriptionSpendSelected" format="currency" :privacyMode="privacyMode" />
+         <StatCard label="Avg Monthly Spend" :value="avgMonthlySubscriptionSpend" format="currency" :privacyMode="privacyMode" />
       </div>
     </div>
 
@@ -89,18 +87,10 @@ const { search, selectedTags, privacyMode, transactions, initFilters } = useGlob
 onMounted(() => initFilters())
 const includeStaleSubscriptions = ref(true)
 const ignoreSoftware = ref(true)
-const requireMinimumChargeCount = ref(true)
+
 const activeFrequencyTab = ref('All')
 
-const TAB_ORDER = [
-  'One-Time',
-  'Weekly',
-  'Monthly',
-  'Every Two Months',
-  'Every Six Months',
-  'Yearly',
-  'Irregular',
-]
+const TAB_ORDER = ['Monthly', 'Yearly', 'Irregular']
 
 const summaryColumns = [
   { key: 'subscriptionName', label: 'Subscription', align: 'left', sortable: true },
@@ -139,27 +129,28 @@ function toValidDate(dateString) {
   return Number.isNaN(d.getTime()) ? null : d
 }
 
-function cadenceFromAvgInterval(avgIntervalDays, chargesCount) {
-  if (chargesCount <= 1 || avgIntervalDays == null) return 'One-Time'
-  if (avgIntervalDays <= 10) return 'Weekly'
-  if (avgIntervalDays <= 45) return 'Monthly'
-  if (avgIntervalDays <= 100) return 'Every Two Months'
-  if (avgIntervalDays <= 260) return 'Every Six Months'
-  if (avgIntervalDays <= 420) return 'Yearly'
+function cadenceFromAvgInterval(avgIntervalDays) {
+  if (avgIntervalDays == null) return 'Irregular'
+  if (avgIntervalDays >= 15 && avgIntervalDays <= 45) return 'Monthly'
+  if (avgIntervalDays >= 274 && avgIntervalDays <= 456) return 'Yearly'
   return 'Irregular'
 }
 
-function averageRecentIntervalDays(entries, recentChargeCount = 6) {
-  const recentEntries = entries.slice(-recentChargeCount)
+function averageRecentIntervalDays(entries) {
   const intervals = []
-
-  for (let i = 1; i < recentEntries.length; i += 1) {
-    const diffMs = recentEntries[i].date.getTime() - recentEntries[i - 1].date.getTime()
+  for (let i = 1; i < entries.length; i += 1) {
+    const diffMs = entries[i].date.getTime() - entries[i - 1].date.getTime()
     if (diffMs > 0) intervals.push(diffMs / 86_400_000)
   }
-
   if (!intervals.length) return null
-  return intervals.reduce((sum, d) => sum + d, 0) / intervals.length
+
+  const sorted = [...intervals].sort((a, b) => a - b)
+  const mid = Math.floor(sorted.length / 2)
+  const median = sorted.length % 2 === 0 ? (sorted[mid - 1] + sorted[mid]) / 2 : sorted[mid]
+
+  const filtered = intervals.filter((d) => d <= median * 3)
+  if (!filtered.length) return null
+  return filtered.reduce((sum, d) => sum + d, 0) / filtered.length
 }
 
 const subscriptionTransactions = computed(() => {
@@ -240,7 +231,7 @@ const summaryRows = computed(() =>
       chargesCount,
       hasRecurringPattern: avgIntervalDays != null,
       avgIntervalDays: avgIntervalDays ?? -1,
-      cadence: cadenceFromAvgInterval(avgIntervalDays, chargesCount),
+      cadence: cadenceFromAvgInterval(avgIntervalDays),
       averagePrice,
       lastChargeDate: mostRecentEntry.dateText,
       mostRecentPrice: mostRecentEntry.cost,
@@ -262,14 +253,8 @@ const filteredSummaryRowsByStale = computed(() =>
   )
 )
 
-const filteredSummaryRows = computed(() =>
-  filteredSummaryRowsByStale.value.filter((row) =>
-    !requireMinimumChargeCount.value || row.chargesCount >= 6
-  )
-)
-
 const frequencyTabs = computed(() => {
-  const set = new Set(filteredSummaryRows.value.map((row) => row.cadence))
+  const set = new Set(filteredSummaryRowsByStale.value.map((row) => row.cadence))
   return ['All', ...TAB_ORDER.filter((tab) => set.has(tab))]
 })
 
@@ -281,8 +266,8 @@ watch(frequencyTabs, (tabs) => {
 
 const subscriptionSummaryRows = computed(() =>
   activeFrequencyTab.value === 'All'
-    ? filteredSummaryRows.value
-    : filteredSummaryRows.value.filter((row) => row.cadence === activeFrequencyTab.value)
+    ? filteredSummaryRowsByStale.value
+    : filteredSummaryRowsByStale.value.filter((row) => row.cadence === activeFrequencyTab.value)
 )
 
 const visibleSubscriptionKeys = computed(() =>
@@ -306,6 +291,19 @@ const visibleSubscriptionTransactions = computed(() =>
 const totalSubscriptionSpendSelected = computed(() =>
   visibleSubscriptionTransactions.value.reduce((sum, tx) => sum + (Number(tx.Cost) || 0), 0)
 )
+
+const avgMonthlySubscriptionSpend = computed(() => {
+  const txs = visibleSubscriptionTransactions.value
+  if (!txs.length) return 0
+  const dates = txs.map((tx) => new Date(tx.Date)).filter((d) => !isNaN(d))
+  if (!dates.length) return 0
+  const minDate = new Date(Math.min(...dates))
+  const maxDate = new Date()
+  const months =
+    (maxDate.getFullYear() - minDate.getFullYear()) * 12 +
+    (maxDate.getMonth() - minDate.getMonth()) || 1
+  return totalSubscriptionSpendSelected.value / months
+})
 
 const bubblePoints = computed(() => {
   const rows = subscriptionSummaryRows.value
@@ -412,7 +410,7 @@ function formatCurrency(value) {
 
 .kpi-grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(4, 1fr);
   gap: 0.75rem;
   margin-top: 0.85rem;
 }
