@@ -15,7 +15,8 @@ const STORAGE_KEY = 'budgeting-analysis.global-filters'
 
 // Singleton state
 const availableYears = ref(['Last 365 Days', 'All'])
-const selectedYear = ref('Last 365 Days')
+const CURRENT_YEAR = String(new Date().getFullYear())
+const selectedYear = ref(CURRENT_YEAR)
 const search = ref('')
 const selectedTags = ref([])
 const privacyMode = ref(false)
@@ -33,7 +34,7 @@ function sanitizeStoredState(parsed) {
   if (!parsed || typeof parsed !== 'object') return null
 
   return {
-    selectedYear: typeof parsed.selectedYear === 'string' ? parsed.selectedYear : 'Last 365 Days',
+    selectedYear: typeof parsed.selectedYear === 'string' ? parsed.selectedYear : CURRENT_YEAR,
     search: typeof parsed.search === 'string' ? parsed.search : '',
     selectedTags: Array.isArray(parsed.selectedTags)
       ? parsed.selectedTags.filter((tag) => typeof tag === 'string')
