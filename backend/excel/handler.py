@@ -220,7 +220,7 @@ def xlsx_format_rows(ws: Worksheet, cols: dict):
     date_col = cols.get("Date")[0]
     category_col = cols.get("Category")[0]
     
-    for row in range(2, ws.max_row + 150):
+    for row in range(2, ws.max_row + 1000):
         # We're tracking if there is an entry in this part so we can continue adding formatting if there is no data
         item_cell = ws[f"{item_col}{row}"]
         is_empty = item_cell.value is None
